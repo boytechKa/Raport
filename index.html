@@ -1,0 +1,423 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#121417">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Dziennik">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Dziennik jazd testowych</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+/* Layout: one narrow column, instrument-cluster feel; condition grid is the cockpit, report below */
+:root{
+  --bg:#eef0f2; --panel:#ffffff; --panel-2:#e4e7eb; --line:#cfd4da;
+  --fg:#16191d; --muted:#5d6670; --accent:#b5650a; --accent-fg:#ffffff;
+  --live:#1f7a4d; --warn:#9b2c2c;
+  --day:#c98a12; --dusk:#8a4fb5; --night:#2f5f9e;
+  --f-display:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
+  --f-body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-num:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#121417; --panel:#1b1e23; --panel-2:#262a31; --line:#343a43;
+  --fg:#e9ecef; --muted:#98a1ab; --accent:#f0a33a; --accent-fg:#1a1205;
+  --live:#4cc88a; --warn:#ff7b7b;
+  --day:#f2c14e; --dusk:#c79bf0; --night:#7fb0f5; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#121417; --panel:#1b1e23; --panel-2:#262a31; --line:#343a43;
+  --fg:#e9ecef; --muted:#98a1ab; --accent:#f0a33a; --accent-fg:#1a1205;
+  --live:#4cc88a; --warn:#ff7b7b;
+  --day:#f2c14e; --dusk:#c79bf0; --night:#7fb0f5; color-scheme:dark}
+
+*{box-sizing:border-box}
+html{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:16px;line-height:1.4}
+.wrap{max-width:640px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:16px 48px;display:flex;flex-direction:column;gap:18px}
+h1{font-family:var(--f-display);font-weight:700;font-size:1.7rem;letter-spacing:.02em;margin:0;text-wrap:balance}
+h2{font-family:var(--f-display);font-weight:600;font-size:1.05rem;letter-spacing:.08em;text-transform:uppercase;margin:0;color:var(--muted)}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
+section{display:flex;flex-direction:column;gap:10px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:12px}
+.row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+label{display:flex;flex-direction:column;gap:4px;font-size:.8rem;color:var(--muted);letter-spacing:.03em;min-width:0}
+input,select,textarea{font:inherit;font-size:1rem;color:var(--fg);background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:10px;width:100%;min-width:0}
+input.num{font-family:var(--f-num)}
+textarea{min-height:70px;resize:vertical}
+input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button{font:inherit;cursor:pointer;border-radius:8px;border:1px solid var(--line);background:var(--panel-2);color:var(--fg);padding:10px 12px}
+.btn-accent{background:var(--accent);color:var(--accent-fg);border-color:var(--accent);font-weight:600}
+.btn-sm{padding:6px 10px;font-size:.85rem}
+.with-btn{display:flex;gap:6px}
+.with-btn input{flex:1}
+
+/* cockpit */
+.status{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.status .now{font-family:var(--f-display);font-size:1.4rem;font-weight:700}
+.status .clock{font-family:var(--f-num);font-size:1.4rem}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--muted);margin-right:8px;vertical-align:middle}
+.dot.on{background:var(--live);animation:pulse 1.6s infinite}
+@keyframes pulse{50%{opacity:.35}}
+@media (prefers-reduced-motion:reduce){.dot.on{animation:none}}
+.grid{display:grid;grid-template-columns:4.2rem repeat(3,minmax(0,1fr));gap:6px;align-items:stretch}
+.grid .rh{font-family:var(--f-display);font-weight:600;font-size:.95rem;letter-spacing:.06em;text-transform:uppercase;display:flex;align-items:center;gap:6px}
+.grid .rh i{width:4px;align-self:stretch;border-radius:2px}
+.grid .ch{font-family:var(--f-display);font-size:.85rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);text-align:center}
+.cond{min-height:64px;font-family:var(--f-display);font-size:1.15rem;font-weight:600;letter-spacing:.03em;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:6px}
+.cond small{font-family:var(--f-num);font-size:.75rem;font-weight:400;color:var(--muted)}
+.cond.active{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+.cond.active small{color:var(--accent-fg)}
+.extra{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.extra button{min-height:52px;font-family:var(--f-display);font-size:1.05rem;font-weight:600;letter-spacing:.03em}
+.extra .stop{color:var(--warn)}
+
+/* segments */
+.seg{border-left:4px solid var(--line);padding:10px 10px 10px 12px;background:var(--panel-2);border-radius:0 8px 8px 0;display:flex;flex-direction:column;gap:8px}
+.seg[data-p="day"]{border-left-color:var(--day)} .seg[data-p="dusk"]{border-left-color:var(--dusk)} .seg[data-p="night"]{border-left-color:var(--night)}
+.seg[data-p="break"]{border-left-color:var(--muted)} .seg[data-p="tech"]{border-left-color:var(--warn)}
+.seg-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
+.seg-head b{font-family:var(--f-display);font-size:1.1rem;letter-spacing:.03em}
+.seg-head .num{color:var(--muted);font-size:.9rem}
+.seg.live{outline:2px solid var(--live)}
+.seg-fields{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.seg-fields label{font-size:.72rem}
+.seg-fields input{padding:8px;font-size:.95rem}
+.seg-tools{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.thumb{width:56px;height:42px;object-fit:cover;border-radius:6px;border:1px solid var(--line);cursor:zoom-in}
+.empty{color:var(--muted);font-size:.95rem;padding:6px 2px}
+
+/* summary */
+.tbl-wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-family:var(--f-num);font-variant-numeric:tabular-nums;font-size:.92rem}
+th,td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+thead th{font-family:var(--f-display);font-size:.8rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+tr.ph td{font-family:var(--f-display);font-size:.95rem;letter-spacing:.06em;text-transform:uppercase;font-weight:600;padding-top:12px}
+tr.tot td{font-weight:600}
+.kv{display:grid;grid-template-columns:1fr auto;gap:6px 12px;font-size:.95rem}
+.kv span:nth-child(even){font-family:var(--f-num);text-align:right}
+.note{font-size:.85rem;color:var(--muted)}
+pre.out{white-space:pre-wrap;font-family:var(--f-num);font-size:.82rem;background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:10px;margin:0;max-height:280px;overflow:auto}
+.confirm{display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:10px}
+.hist-item{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:8px;font-size:.9rem;z-index:20}
+.viewer{position:fixed;inset:0;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;z-index:30;padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.viewer img{max-width:100%;max-height:100%;border-radius:8px}
+@media (max-width:420px){.seg-fields{grid-template-columns:repeat(2,minmax(0,1fr))}.grid{grid-template-columns:3.6rem repeat(3,minmax(0,1fr))}}
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <h1>Dziennik jazd</h1>
+    <div class="with-btn">
+      <button id="wake" class="btn-sm" type="button">Ekran: zwykły</button>
+    </div>
+  </div>
+
+  <section class="panel" aria-label="Zmiana">
+    <div class="row">
+      <label for="date">Data<input id="date" type="date"></label>
+      <label for="reg">Rejestracja<input id="reg" type="text" placeholder="np. AB12CDE" autocomplete="off"></label>
+    </div>
+    <div class="row">
+      <label for="shiftStart">Start zmiany
+        <span class="with-btn"><input id="shiftStart" type="time"><button type="button" class="btn-sm" data-now="shiftStart">Teraz</button></span></label>
+      <label for="shiftEnd">Koniec zmiany
+        <span class="with-btn"><input id="shiftEnd" type="time"><button type="button" class="btn-sm" data-now="shiftEnd">Teraz</button></span></label>
+    </div>
+    <div class="row">
+      <label for="odoStart">Licznik start [km]
+        <span class="with-btn"><input id="odoStart" class="num" type="number" inputmode="numeric" placeholder="0"><button type="button" class="btn-sm" data-photo="odoStart" aria-label="Zdjęcie licznika na starcie">Foto</button></span></label>
+      <label for="odoEnd">Licznik koniec [km]
+        <span class="with-btn"><input id="odoEnd" class="num" type="number" inputmode="numeric" placeholder="0"><button type="button" class="btn-sm" data-photo="odoEnd" aria-label="Zdjęcie licznika na końcu">Foto</button></span></label>
+    </div>
+    <div class="seg-tools" id="shiftPhotos"></div>
+  </section>
+
+  <section aria-label="Jazda">
+    <div class="status">
+      <span class="now"><span id="dot" class="dot"></span><span id="nowLabel">Brak aktywnego odcinka</span></span>
+      <span class="clock" id="nowDur">0:00</span>
+    </div>
+    <div class="grid" id="grid"></div>
+    <div class="extra">
+      <button type="button" data-cond="break">Przerwa</button>
+      <button type="button" data-cond="tech">Technical issue</button>
+      <button type="button" class="stop" data-cond="stop">Stop</button>
+    </div>
+    <p class="note">Dotknij warunków, gdy się zmieniają: czas liczy się sam. Licznik wpisz albo zrób mu zdjęcie na postoju, kilometry odcinka policzą się z różnicy.</p>
+  </section>
+
+  <section aria-label="Pogoda">
+    <h2>Pogoda</h2>
+    <div class="panel">
+      <div class="row" style="grid-template-columns:repeat(3,minmax(0,1fr))">
+        <label for="wDay">Day<select id="wDay"></select></label>
+        <label for="wDusk">Dusk/Dawn<select id="wDusk"></select></label>
+        <label for="wNight">Night<select id="wNight"></select></label>
+      </div>
+    </div>
+  </section>
+
+  <section aria-label="Odcinki">
+    <div class="top"><h2>Odcinki</h2><span class="note" id="segCount"></span></div>
+    <div id="segs" style="display:flex;flex-direction:column;gap:8px"></div>
+  </section>
+
+  <section aria-label="Nośniki danych">
+    <h2>Nośniki danych</h2>
+    <div class="panel" id="mods"></div>
+  </section>
+
+  <section aria-label="Uwagi">
+    <h2>Uwagi</h2>
+    <label for="comment" class="panel" style="color:var(--muted)">Problemy z autem lub systemem, nietypowe sytuacje [godzina; miejsce]
+      <textarea id="comment"></textarea></label>
+  </section>
+
+  <section aria-label="Podsumowanie">
+    <h2>Do tabeli</h2>
+    <div class="panel">
+      <div class="tbl-wrap"><table id="sumTable"></table></div>
+      <div class="kv" id="sumKv"></div>
+      <h2 style="margin-top:4px">Czas pracy</h2>
+      <div class="kv" id="workKv"></div>
+      <div class="with-btn" style="flex-wrap:wrap">
+        <button type="button" class="btn-accent" id="copy">Kopiuj podsumowanie</button>
+        <button type="button" id="newDay">Nowy dzień</button>
+      </div>
+      <div id="confirmBox" hidden class="confirm">
+        <span>Zapisać ten dzień w historii i zacząć nowy?</span>
+        <button type="button" class="btn-accent btn-sm" id="confirmYes">Tak, nowy dzień</button>
+        <button type="button" class="btn-sm" id="confirmNo">Anuluj</button>
+      </div>
+      <pre class="out" id="out" hidden></pre>
+    </div>
+  </section>
+
+  <section aria-label="Historia">
+    <h2>Historia dni</h2>
+    <div class="panel" id="hist"></div>
+    <p class="note">Wszystko zapisuje się tylko w tym telefonie, w tej przeglądarce. Nic nie wychodzi na zewnątrz. Na koniec dnia skopiuj podsumowanie, bo wyczyszczenie danych przeglądarki usuwa zapis.</p>
+  </section>
+</div>
+
+<input type="file" id="photoInput" accept="image/*" capture="environment" hidden>
+<div id="viewer" class="viewer" hidden><img id="viewerImg" alt="Zdjęcie licznika"></div>
+<div id="toast" class="toast" hidden></div>
+
+<script>
+(function(){
+const PERIODS=[["day","Day"],["dusk","Dusk"],["night","Night"]];
+const ROADS=[["city","City"],["rural","Rural"],["highway","Highway"]];
+const WEATHER=["","Clear","Cloudy","Rain","Snow","Fog","Clear/Rain","Clear/Fog","Clear/Snow","Clear/Drizzel","Cloudy/Rain","Fog/clear"];
+const KEY="rlog.current", HKEY="rlog.history";
+const $=id=>document.getElementById(id);
+
+function today(){const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
+function nowHM(){const d=new Date();return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");}
+function blank(){return{date:today(),reg:"",shiftStart:"",shiftEnd:"",odoStart:"",odoEnd:"",photos:{},weather:{day:"",dusk:"",night:""},mods:[{id:"",tbStart:"",tbEnd:""},{id:"",tbStart:"",tbEnd:""}],segs:[],comment:""};}
+function load(k,def){try{const v=localStorage.getItem(k);return v?JSON.parse(v):def;}catch(e){return def;}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){toast("Nie udało się zapisać w telefonie (brak miejsca?)");}}
+let S=load(KEY,null)||blank();
+let H=load(HKEY,[]);
+S.mods=S.mods||blank().mods; S.photos=S.photos||{}; S.weather=S.weather||blank().weather;
+
+function mins(t){if(!t)return null;const [h,m]=t.split(":").map(Number);return h*60+m;}
+function dur(a,b){const x=mins(a),y=mins(b);if(x==null||y==null)return 0;return y>=x?y-x:y+1440-x;}
+function hm(m){m=Math.max(0,Math.round(m||0));return Math.floor(m/60)+":"+String(m%60).padStart(2,"0");}
+function num(v){const n=parseFloat(String(v).replace(",","."));return isFinite(n)?n:null;}
+function label(type){if(type==="break")return"Przerwa";if(type==="tech")return"Technical issue";const [p,r]=type.split("-");return (PERIODS.find(x=>x[0]===p)||[,p])[1]+" · "+(ROADS.find(x=>x[0]===r)||[,r])[1];}
+function active(){const s=S.segs[S.segs.length-1];return s&&!s.end?s:null;}
+function segMin(s){return dur(s.start,s.end||nowHM());}
+function segKm(i){const s=S.segs[i];if(s.km!==""&&s.km!=null&&num(s.km)!=null)return num(s.km);
+  let a=num(s.odo); if(a==null&&i===0)a=num(S.odoStart);
+  let b=null; for(let j=i+1;j<S.segs.length;j++){if(num(S.segs[j].odo)!=null){b=num(S.segs[j].odo);break;} if(j===i+1)break;}
+  if(b==null&&i===S.segs.length-1)b=num(S.odoEnd);
+  if(a==null||b==null||b<a)return null; return Math.round((b-a)*10)/10;}
+
+function esc(s){return String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+
+/* ---------- render ---------- */
+function renderGrid(){
+  const a=active();
+  let h='<span></span>'+ROADS.map(r=>'<span class="ch">'+r[1]+'</span>').join("");
+  for(const [p,pl] of PERIODS){
+    h+='<span class="rh"><i style="background:var(--'+p+')"></i>'+pl+'</span>';
+    for(const [r] of ROADS){const t=p+"-"+r;const m=S.segs.filter(s=>s.type===t).reduce((x,s)=>x+segMin(s),0);
+      h+='<button type="button" class="cond'+(a&&a.type===t?' active':'')+'" data-cond="'+t+'" aria-pressed="'+(a&&a.type===t)+'">'+ROADS.find(x=>x[0]===r)[1]+'<small>'+hm(m)+'</small></button>';}
+  }
+  $("grid").innerHTML=h;
+  document.querySelectorAll(".extra button").forEach(b=>b.classList.toggle("active",!!(a&&a.type===b.dataset.cond)));
+}
+function renderStatus(){const a=active();$("dot").classList.toggle("on",!!a);$("nowLabel").textContent=a?label(a.type):"Brak aktywnego odcinka";$("nowDur").textContent=a?hm(segMin(a)):"0:00";}
+function renderSegs(){
+  const box=$("segs");
+  if(!S.segs.length){box.innerHTML='<div class="empty">Jeszcze nic. Zacznij od dotknięcia warunków, w których jedziesz.</div>';$("segCount").textContent="";return;}
+  $("segCount").textContent=S.segs.length+" odc.";
+  box.innerHTML=S.segs.map((s,i)=>{const p=s.type.includes("-")?s.type.split("-")[0]:s.type;const km=segKm(i);
+    return '<div class="seg'+(!s.end?' live':'')+'" data-p="'+p+'" data-i="'+i+'">'+
+      '<div class="seg-head"><b>'+label(s.type)+'</b><span class="num" data-calc="'+i+'">'+hm(segMin(s))+' · '+(km==null?'— km':km+' km')+'</span></div>'+
+      '<div class="seg-fields">'+
+        '<label for="s'+i+'start">Od<input id="s'+i+'start" type="time" value="'+esc(s.start)+'" data-f="start"></label>'+
+        '<label for="s'+i+'end">Do<input id="s'+i+'end" type="time" value="'+esc(s.end)+'" data-f="end"></label>'+
+        '<label for="s'+i+'odo">Licznik na starcie<input id="s'+i+'odo" class="num" type="number" inputmode="numeric" value="'+esc(s.odo)+'" data-f="odo" placeholder="'+(i===0&&S.odoStart?esc(S.odoStart):'km')+'"></label>'+
+        '<label for="s'+i+'km">Km ręcznie<input id="s'+i+'km" class="num" type="number" inputmode="decimal" value="'+esc(s.km)+'" data-f="km" placeholder="auto"></label>'+
+      '</div>'+
+      '<div class="seg-tools">'+
+        '<button type="button" class="btn-sm" data-photo="seg'+i+'">Foto licznika</button>'+
+        (S.photos["seg"+i]?'<img class="thumb" src="'+S.photos["seg"+i]+'" alt="Licznik, odcinek '+(i+1)+'" data-view="seg'+i+'">':'')+
+        '<button type="button" class="btn-sm" data-del="'+i+'" style="margin-left:auto">Usuń</button>'+
+      '</div></div>';}).join("");
+}
+function renderShiftPhotos(){let h="";for(const k of ["odoStart","odoEnd"])if(S.photos[k])h+='<img class="thumb" src="'+S.photos[k]+'" alt="Licznik '+(k==="odoStart"?"start":"koniec")+'" data-view="'+k+'"> ';$("shiftPhotos").innerHTML=h;}
+function renderMods(){
+  $("mods").innerHTML=S.mods.map((m,i)=>'<div class="row" style="grid-template-columns:1.4fr 1fr 1fr">'+
+    '<label for="m'+i+'id">Moduł '+(i+1)+' – ID<input id="m'+i+'id" type="text" value="'+esc(m.id)+'" data-m="'+i+'" data-mf="id" placeholder="ID_" autocomplete="off"></label>'+
+    '<label for="m'+i+'s">TB start<input id="m'+i+'s" class="num" type="number" inputmode="decimal" step="0.01" value="'+esc(m.tbStart)+'" data-m="'+i+'" data-mf="tbStart"></label>'+
+    '<label for="m'+i+'e">TB koniec<input id="m'+i+'e" class="num" type="number" inputmode="decimal" step="0.01" value="'+esc(m.tbEnd)+'" data-m="'+i+'" data-mf="tbEnd"></label></div>').join("");
+}
+function totals(){
+  const t={};for(const [p] of PERIODS){t[p]={};for(const [r] of ROADS)t[p][r]={km:0,min:0,kmMissing:false};}
+  let brk=0,tech=0;
+  S.segs.forEach((s,i)=>{const m=segMin(s);if(s.type==="break"){brk+=m;return;}if(s.type==="tech"){tech+=m;return;}
+    const [p,r]=s.type.split("-");const k=segKm(i);t[p][r].min+=m;if(k==null)t[p][r].kmMissing=true;else t[p][r].km+=k;});
+  const shift=dur(S.shiftStart,S.shiftEnd);
+  let drive=0,km=0;for(const [p] of PERIODS)for(const [r] of ROADS){drive+=t[p][r].min;km+=t[p][r].km;}
+  const odoTotal=(num(S.odoEnd)!=null&&num(S.odoStart)!=null)?num(S.odoEnd)-num(S.odoStart):null;
+  return{t,brk,tech,shift,drive,km:Math.round(km*10)/10,odoTotal,logging:Math.max(0,shift-brk-tech)};
+}
+function renderSummary(){
+  const T=totals();
+  let h='<thead><tr><th></th><th>km</th><th>h:mm</th></tr></thead><tbody>';
+  for(const [p,pl] of PERIODS){const w=S.weather[p];let pk=0,pm=0;
+    h+='<tr class="ph"><td colspan="3">'+pl+(w?' · '+esc(w):'')+'</td></tr>';
+    for(const [r,rl] of ROADS){const c=T.t[p][r];pk+=c.km;pm+=c.min;h+='<tr><td>'+rl+'</td><td>'+(Math.round(c.km*10)/10)+(c.kmMissing?'*':'')+'</td><td>'+hm(c.min)+'</td></tr>';}
+    h+='<tr class="tot"><td>Logged in '+pl.toLowerCase()+'</td><td>'+(Math.round(pk*10)/10)+'</td><td>'+hm(pm)+'</td></tr>';}
+  h+='<tr class="tot"><td>Logged KM / time</td><td>'+T.km+'</td><td>'+hm(T.drive)+'</td></tr></tbody>';
+  $("sumTable").innerHTML=h;
+  const miss=Object.values(T.t).some(o=>Object.values(o).some(c=>c.kmMissing));
+  $("sumKv").innerHTML=
+    '<span>Total km (licznik)</span><span>'+(T.odoTotal==null?'—':T.odoTotal)+'</span>'+
+    '<span>Time of breaks</span><span>'+hm(T.brk)+'</span>'+
+    '<span>Technical issues</span><span>'+hm(T.tech)+'</span>'+
+    '<span>Time of logging (zmiana − przerwy − tech)</span><span>'+hm(T.logging)+'</span>'+
+    (T.odoTotal!=null&&Math.abs(T.odoTotal-T.km)>0.5?'<span style="color:var(--warn)">Różnica licznik vs odcinki</span><span style="color:var(--warn)">'+(Math.round((T.odoTotal-T.km)*10)/10)+' km</span>':'')+
+    (miss?'<span class="note" style="grid-column:1/-1">* brakuje licznika w części odcinków, te km nie są jeszcze policzone</span>':'');
+  const other=Math.max(0,T.shift-T.drive-T.brk-T.tech);
+  $("workKv").innerHTML='<span>Jazda</span><span>'+hm(T.drive)+'</span><span>Przerwy</span><span>'+hm(T.brk)+'</span><span>Technical issue</span><span>'+hm(T.tech)+'</span><span>Pozostały czas zmiany (przygotowanie, kopiowanie, inne)</span><span>'+hm(other)+'</span><span><b>Suma zmiany</b></span><span><b>'+hm(T.shift)+'</b></span>';
+}
+function updateCalcs(){S.segs.forEach((s,i)=>{const el=document.querySelector('[data-calc="'+i+'"]');if(el){const k=segKm(i);el.textContent=hm(segMin(s))+' · '+(k==null?'— km':k+' km');}});}
+function renderAll(){
+  for(const id of ["date","reg","shiftStart","shiftEnd","odoStart","odoEnd","comment"])$(id).value=S[id]||"";
+  for(const [p,id] of [["day","wDay"],["dusk","wDusk"],["night","wNight"]]){const sel=$(id);const opts=WEATHER.includes(S.weather[p])?WEATHER:WEATHER.concat(S.weather[p]);sel.innerHTML=opts.map(w=>'<option value="'+esc(w)+'">'+(w||"–")+'</option>').join("");sel.value=S.weather[p]||"";}
+  renderGrid();renderStatus();renderSegs();renderShiftPhotos();renderMods();renderSummary();renderHist();
+}
+
+/* ---------- text export ---------- */
+function summaryText(st){
+  const prev=S;S=st;const T=totals();S=prev;
+  const L=[];
+  L.push("Data: "+st.date+(st.reg?"  |  "+st.reg:""));
+  L.push("Zmiana: "+(st.shiftStart||"?")+" - "+(st.shiftEnd||"?")+"  ("+hm(T.shift)+")");
+  L.push("Licznik: "+(st.odoStart||"?")+" -> "+(st.odoEnd||"?")+(T.odoTotal!=null?"  ("+T.odoTotal+" km)":""));
+  L.push("Time of breaks: "+hm(T.brk)+"  |  Technical issues: "+hm(T.tech));
+  L.push("");
+  for(const [p,pl] of PERIODS){L.push(pl.toUpperCase()+" / weather: "+(st.weather[p]||"-"));
+    let pk=0,pm=0;for(const [r,rl] of ROADS){const c=T.t[p][r];pk+=c.km;pm+=c.min;L.push("  "+rl.padEnd(8)+String(Math.round(c.km*10)/10).padStart(6)+" km   "+hm(c.min).padStart(5));}
+    L.push("  Logged  "+String(Math.round(pk*10)/10).padStart(6)+" km   "+hm(pm).padStart(5));}
+  L.push("");
+  L.push("Logged KM: "+T.km+"  |  Logged time: "+hm(T.drive));
+  L.push("Time of logging: "+hm(T.logging));
+  st.mods.forEach((m,i)=>{if(m.id||m.tbStart||m.tbEnd)L.push("Data module "+(i+1)+": "+(m.id||"-")+"  "+(m.tbStart||"0")+" -> "+(m.tbEnd||"?")+" TB");});
+  if(st.comment)L.push("Uwagi: "+st.comment);
+  return L.join("\n");
+}
+
+/* ---------- actions ---------- */
+function tap(cond){
+  const now=nowHM(),a=active();
+  if(a){a.end=now;}
+  if(cond!=="stop"&&!(a&&a.type===cond)){
+    if(!S.shiftStart)S.shiftStart=now;
+    S.segs.push({type:cond,start:now,end:"",odo:"",km:""});
+  }
+  save();renderAll();
+}
+let photoTarget=null;
+function compress(file){return new Promise((res,rej)=>{const img=new Image();const url=URL.createObjectURL(file);img.onload=()=>{const max=900;const sc=Math.min(1,max/Math.max(img.width,img.height));const c=document.createElement("canvas");c.width=Math.round(img.width*sc);c.height=Math.round(img.height*sc);c.getContext("2d").drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(url);res(c.toDataURL("image/jpeg",0.6));};img.onerror=rej;img.src=url;});}
+$("photoInput").addEventListener("change",async e=>{const f=e.target.files[0];e.target.value="";if(!f||!photoTarget)return;try{S.photos[photoTarget]=await compress(f);save();renderAll();toast("Zdjęcie zapisane");}catch(err){toast("Nie udało się wczytać zdjęcia");}});
+
+document.addEventListener("click",e=>{
+  const b=e.target.closest("button,img[data-view]");if(!b)return;
+  if(b.dataset.cond){tap(b.dataset.cond);return;}
+  if(b.dataset.now){S[b.dataset.now]=nowHM();save();renderAll();return;}
+  if(b.dataset.photo){photoTarget=b.dataset.photo;$("photoInput").click();return;}
+  if(b.dataset.view){$("viewerImg").src=S.photos[b.dataset.view];$("viewer").hidden=false;return;}
+  if(b.dataset.del!=null){const i=+b.dataset.del;if(b.dataset.armed){S.segs.splice(i,1);
+      const np={};for(const k in S.photos){const m=k.match(/^seg(\d+)$/);if(!m)np[k]=S.photos[k];else{const n=+m[1];if(n<i)np[k]=S.photos[k];else if(n>i)np["seg"+(n-1)]=S.photos[k];}}S.photos=np;save();renderAll();}
+    else{b.dataset.armed="1";b.textContent="Na pewno?";b.style.color="var(--warn)";setTimeout(()=>{if(b.isConnected){delete b.dataset.armed;b.textContent="Usuń";b.style.color="";}},3000);}return;}
+});
+$("viewer").addEventListener("click",()=>{$("viewer").hidden=true;});
+
+document.addEventListener("input",e=>{
+  const el=e.target;
+  if(["date","reg","shiftStart","shiftEnd","odoStart","odoEnd","comment"].includes(el.id)){S[el.id]=el.value;}
+  else if(el.dataset.f){const i=+el.closest(".seg").dataset.i;S.segs[i][el.dataset.f]=el.value;updateCalcs();}
+  else if(el.dataset.mf){S.mods[+el.dataset.m][el.dataset.mf]=el.value;}
+  else if(el.id==="wDay"||el.id==="wDusk"||el.id==="wNight"){S.weather[{wDay:"day",wDusk:"dusk",wNight:"night"}[el.id]]=el.value;}
+  else return;
+  save();renderSummary();if(el.id==="odoStart"||el.id==="odoEnd")updateCalcs();
+  if(el.dataset.f==="start"||el.dataset.f==="end"){renderGrid();renderStatus();}
+});
+
+$("copy").addEventListener("click",()=>{const txt=summaryText(S);const out=$("out");out.textContent=txt;out.hidden=false;
+  navigator.clipboard&&navigator.clipboard.writeText(txt).then(()=>toast("Skopiowano"),()=>{selectOut();toast("Zaznaczone, skopiuj ręcznie");});
+  if(!navigator.clipboard){selectOut();toast("Zaznaczone, skopiuj ręcznie");}});
+function selectOut(){const r=document.createRange();r.selectNodeContents($("out"));const s=getSelection();s.removeAllRanges();s.addRange(r);}
+
+$("newDay").addEventListener("click",()=>{$("confirmBox").hidden=false;});
+$("confirmNo").addEventListener("click",()=>{$("confirmBox").hidden=true;});
+$("confirmYes").addEventListener("click",()=>{const a=active();if(a)a.end=nowHM();
+  if(S.segs.length||S.odoStart||S.shiftStart){const copy=JSON.parse(JSON.stringify(S));copy.photos={};H.unshift({savedAt:Date.now(),state:copy});H=H.slice(0,60);try{localStorage.setItem(HKEY,JSON.stringify(H));}catch(e){}}
+  const keep={reg:S.reg,mods:S.mods.map(m=>({id:m.id,tbStart:m.tbEnd||m.tbStart,tbEnd:""}))};
+  S=blank();S.reg=keep.reg;S.mods=keep.mods;save();$("confirmBox").hidden=true;$("out").hidden=true;renderAll();toast("Nowy dzień");});
+
+function renderHist(){
+  if(!H.length){$("hist").innerHTML='<div class="empty">Zapisane dni pojawią się tutaj po „Nowy dzień".</div>';return;}
+  $("hist").innerHTML=H.map((h,i)=>{const st=h.state;const prev=S;S=st;const T=totals();S=prev;
+    return '<div class="hist-item"><span><b>'+esc(st.date)+'</b> <span class="num note">'+T.km+' km · '+hm(T.drive)+'</span></span><span class="with-btn"><button type="button" class="btn-sm" data-hcopy="'+i+'">Kopiuj</button><button type="button" class="btn-sm" data-hdel="'+i+'">Usuń</button></span></div>';}).join("");
+}
+$("hist").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;
+  if(b.dataset.hcopy!=null){const txt=summaryText(H[+b.dataset.hcopy].state);const out=$("out");out.textContent=txt;out.hidden=false;
+    (navigator.clipboard?navigator.clipboard.writeText(txt):Promise.reject()).then(()=>toast("Skopiowano"),()=>{selectOut();toast("Zaznaczone, skopiuj ręcznie");});}
+  if(b.dataset.hdel!=null){if(b.dataset.armed){H.splice(+b.dataset.hdel,1);try{localStorage.setItem(HKEY,JSON.stringify(H));}catch(e){}renderHist();}
+    else{b.dataset.armed="1";b.textContent="Na pewno?";setTimeout(()=>{if(b.isConnected){delete b.dataset.armed;b.textContent="Usuń";}},3000);}}
+});
+
+/* wake lock */
+let lock=null;
+$("wake").addEventListener("click",async()=>{try{if(lock){await lock.release();lock=null;$("wake").textContent="Ekran: zwykły";}
+  else{lock=await navigator.wakeLock.request("screen");$("wake").textContent="Ekran: nie gaśnie";lock.addEventListener("release",()=>{lock=null;$("wake").textContent="Ekran: zwykły";});}}
+  catch(e){toast("Ta przeglądarka nie pozwala zablokować wygaszania");}});
+
+let tt;function toast(m){const t=$("toast");t.textContent=m;t.hidden=false;clearTimeout(tt);tt=setTimeout(()=>t.hidden=true,1800);}
+
+setInterval(()=>{if(active()){renderStatus();updateCalcs();renderSummary();
+  const a=active();const btn=document.querySelector('.cond[data-cond="'+a.type+'"] small');if(btn)btn.textContent=hm(S.segs.filter(s=>s.type===a.type).reduce((x,s)=>x+segMin(s),0));}},20000);
+
+renderAll();
+})();
+if("serviceWorker" in navigator){navigator.serviceWorker.register("sw.js").catch(()=>{});}
+</script>
+</body>
+</html>
