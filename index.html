@@ -81,7 +81,7 @@ button{font:inherit;cursor:pointer;border-radius:8px;border:1px solid var(--line
 /* segments */
 .seg{border-left:4px solid var(--line);padding:10px 10px 10px 12px;background:var(--panel-2);border-radius:0 8px 8px 0;display:flex;flex-direction:column;gap:8px}
 .seg[data-p="day"]{border-left-color:var(--day)} .seg[data-p="dusk"]{border-left-color:var(--dusk)} .seg[data-p="night"]{border-left-color:var(--night)}
-.seg[data-p="break"]{border-left-color:var(--muted)} .seg[data-p="tech"]{border-left-color:var(--warn)}
+.seg[data-p="break"],.seg[data-p="prep"],.seg[data-p="copy"],.seg[data-p="other"]{border-left-color:var(--muted)} .seg[data-p="tech"]{border-left-color:var(--warn)}
 .seg-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
 .seg-head b{font-family:var(--f-display);font-size:1.1rem;letter-spacing:.03em}
 .seg-head .num{color:var(--muted);font-size:.9rem}
@@ -143,6 +143,11 @@ pre.out{white-space:pre-wrap;font-family:var(--f-num);font-size:.82rem;backgroun
     <div class="seg-tools" id="shiftPhotos"></div>
   </section>
 
+  <section aria-label="Nośniki danych">
+    <h2>Nośniki danych</h2>
+    <div class="panel" id="mods"></div>
+  </section>
+
   <section aria-label="Jazda">
     <div class="status">
       <span class="now"><span id="dot" class="dot"></span><span id="nowLabel">Brak aktywnego odcinka</span></span>
@@ -150,11 +155,15 @@ pre.out{white-space:pre-wrap;font-family:var(--f-num);font-size:.82rem;backgroun
     </div>
     <div class="grid" id="grid"></div>
     <div class="extra">
-      <button type="button" data-cond="break">Przerwa</button>
+      <button type="button" data-cond="prep">Przygotowanie</button>
       <button type="button" data-cond="tech">Technical issue</button>
+      <button type="button" data-cond="break">Przerwa</button>
+      <button type="button" data-cond="copy">Kopiowanie</button>
+      <button type="button" data-cond="other">Inne</button>
       <button type="button" class="stop" data-cond="stop">Stop</button>
     </div>
-    <p class="note">Dotknij warunków, gdy się zmieniają: czas liczy się sam. Licznik wpisz albo zrób mu zdjęcie na postoju, kilometry odcinka policzą się z różnicy.</p>
+    <button type="button" class="btn-accent" id="endShift" style="min-height:52px;font-family:var(--f-display);font-size:1.1rem;letter-spacing:.03em">Koniec zmiany</button>
+    <p class="note">Start: wpisz rejestrację, licznik i ID dysku, potem Przygotowanie albo Technical issue, gdy system się uruchamia. TB start wpisz, gdy system wstanie. W trasie dotykaj warunków przy każdej zmianie drogi lub pory dnia. Przerwa techniczna to Technical issue, Twoja własna to Przerwa. Na koniec Kopiowanie, a po zamknięciu systemów Koniec zmiany.</p>
   </section>
 
   <section aria-label="Pogoda">
@@ -173,10 +182,6 @@ pre.out{white-space:pre-wrap;font-family:var(--f-num);font-size:.82rem;backgroun
     <div id="segs" style="display:flex;flex-direction:column;gap:8px"></div>
   </section>
 
-  <section aria-label="Nośniki danych">
-    <h2>Nośniki danych</h2>
-    <div class="panel" id="mods"></div>
-  </section>
 
   <section aria-label="Uwagi">
     <h2>Uwagi</h2>
@@ -236,7 +241,8 @@ function mins(t){if(!t)return null;const [h,m]=t.split(":").map(Number);return h
 function dur(a,b){const x=mins(a),y=mins(b);if(x==null||y==null)return 0;return y>=x?y-x:y+1440-x;}
 function hm(m){m=Math.max(0,Math.round(m||0));return Math.floor(m/60)+":"+String(m%60).padStart(2,"0");}
 function num(v){const n=parseFloat(String(v).replace(",","."));return isFinite(n)?n:null;}
-function label(type){if(type==="break")return"Przerwa";if(type==="tech")return"Technical issue";const [p,r]=type.split("-");return (PERIODS.find(x=>x[0]===p)||[,p])[1]+" · "+(ROADS.find(x=>x[0]===r)||[,r])[1];}
+const NONDRIVE={prep:"Przygotowanie",break:"Przerwa",tech:"Technical issue",copy:"Kopiowanie",other:"Inne"};
+function label(type){if(NONDRIVE[type])return NONDRIVE[type];const [p,r]=type.split("-");return (PERIODS.find(x=>x[0]===p)||[,p])[1]+" · "+(ROADS.find(x=>x[0]===r)||[,r])[1];}
 function active(){const s=S.segs[S.segs.length-1];return s&&!s.end?s:null;}
 function segMin(s){return dur(s.start,s.end||nowHM());}
 function segKm(i){const s=S.segs[i];if(s.km!==""&&s.km!=null&&num(s.km)!=null)return num(s.km);
@@ -283,18 +289,27 @@ function renderShiftPhotos(){let h="";for(const k of ["odoStart","odoEnd"])if(S.
 function renderMods(){
   $("mods").innerHTML=S.mods.map((m,i)=>'<div class="row" style="grid-template-columns:1.4fr 1fr 1fr">'+
     '<label for="m'+i+'id">Moduł '+(i+1)+' – ID<input id="m'+i+'id" type="text" value="'+esc(m.id)+'" data-m="'+i+'" data-mf="id" placeholder="ID_" autocomplete="off"></label>'+
-    '<label for="m'+i+'s">TB start<input id="m'+i+'s" class="num" type="number" inputmode="decimal" step="0.01" value="'+esc(m.tbStart)+'" data-m="'+i+'" data-mf="tbStart"></label>'+
-    '<label for="m'+i+'e">TB koniec<input id="m'+i+'e" class="num" type="number" inputmode="decimal" step="0.01" value="'+esc(m.tbEnd)+'" data-m="'+i+'" data-mf="tbEnd"></label></div>').join("");
+    '<label for="m'+i+'s">TB start<input id="m'+i+'s" class="num" type="number" inputmode="decimal" step="0.1" value="'+esc(m.tbStart)+'" data-m="'+i+'" data-mf="tbStart"></label>'+
+    '<label for="m'+i+'e">TB koniec<input id="m'+i+'e" class="num" type="number" inputmode="decimal" step="0.1" value="'+esc(m.tbEnd)+'" data-m="'+i+'" data-mf="tbEnd"></label></div>').join("");
 }
 function totals(){
   const t={};for(const [p] of PERIODS){t[p]={};for(const [r] of ROADS)t[p][r]={km:0,min:0,kmMissing:false};}
-  let brk=0,tech=0;
-  S.segs.forEach((s,i)=>{const m=segMin(s);if(s.type==="break"){brk+=m;return;}if(s.type==="tech"){tech+=m;return;}
+  let brk=0,tech=0,prep=0,copy=0,other=0,segSum=0;
+  S.segs.forEach((s,i)=>{const m=segMin(s);segSum+=m;if(s.type==="break"){brk+=m;return;}if(s.type==="tech"){tech+=m;return;}
+    if(s.type==="prep"){prep+=m;return;}if(s.type==="copy"){copy+=m;return;}if(s.type==="other"){other+=m;return;}
     const [p,r]=s.type.split("-");const k=segKm(i);t[p][r].min+=m;if(k==null)t[p][r].kmMissing=true;else t[p][r].km+=k;});
   const shift=dur(S.shiftStart,S.shiftEnd);
   let drive=0,km=0;for(const [p] of PERIODS)for(const [r] of ROADS){drive+=t[p][r].min;km+=t[p][r].km;}
   const odoTotal=(num(S.odoEnd)!=null&&num(S.odoStart)!=null)?num(S.odoEnd)-num(S.odoStart):null;
-  return{t,brk,tech,shift,drive,km:Math.round(km*10)/10,odoTotal,logging:Math.max(0,shift-brk-tech)};
+  const untracked=Math.max(0,shift-segSum);
+  return{t,brk,tech,prep,copy,other,untracked,shift,drive,km:Math.round(km*10)/10,odoTotal,logging:Math.max(0,shift-brk-tech)};
+}
+function workRows(T){
+  const rows=[["Drive preparation",T.prep],["Drive",T.drive],["Breaks",T.brk],["Copying",T.copy],["Other",T.other+T.untracked],["Technical issue",T.tech]];
+  const r15=m=>Math.round(m/15)*15;
+  const rounded=rows.map(r=>r15(r[1]));const total=r15(T.shift);
+  const diff=total-rounded.reduce((a,b)=>a+b,0);rounded[1]=Math.max(0,rounded[1]+diff);
+  return rows.map((r,i)=>({name:r[0],exact:r[1],car:rounded[i]})).concat([{name:"Sum",exact:T.shift,car:total}]);
 }
 function renderSummary(){
   const T=totals();
@@ -311,10 +326,12 @@ function renderSummary(){
     '<span>Time of breaks</span><span>'+hm(T.brk)+'</span>'+
     '<span>Technical issues</span><span>'+hm(T.tech)+'</span>'+
     '<span>Time of logging (zmiana − przerwy − tech)</span><span>'+hm(T.logging)+'</span>'+
-    (T.odoTotal!=null&&Math.abs(T.odoTotal-T.km)>0.5?'<span style="color:var(--warn)">Różnica licznik vs odcinki</span><span style="color:var(--warn)">'+(Math.round((T.odoTotal-T.km)*10)/10)+' km</span>':'')+
+    (T.odoTotal!=null&&Math.abs(T.odoTotal-T.km)>0.5?'<span>Km poza logowaniem (tech, dojazdy)</span><span>'+(Math.round((T.odoTotal-T.km)*10)/10)+'</span>':'')+
     (miss?'<span class="note" style="grid-column:1/-1">* brakuje licznika w części odcinków, te km nie są jeszcze policzone</span>':'');
-  const other=Math.max(0,T.shift-T.drive-T.brk-T.tech);
-  $("workKv").innerHTML='<span>Jazda</span><span>'+hm(T.drive)+'</span><span>Przerwy</span><span>'+hm(T.brk)+'</span><span>Technical issue</span><span>'+hm(T.tech)+'</span><span>Pozostały czas zmiany (przygotowanie, kopiowanie, inne)</span><span>'+hm(other)+'</span><span><b>Suma zmiany</b></span><span><b>'+hm(T.shift)+'</b></span>';
+  const W=workRows(T);
+  $("workKv").innerHTML='<span class="note">Do drugiego systemu (zaokr. do 15 min)</span><span class="note">dokładnie / wpisz</span>'+
+    W.map(w=>'<span>'+(w.name==="Sum"?'<b>Sum</b>':w.name)+'</span><span>'+hm(w.exact)+' / <b>'+hm(w.car)+'</b></span>').join("")+
+    (T.untracked>4?'<span class="note" style="grid-column:1/-1">'+hm(T.untracked)+' bez żadnego statusu doliczone do Other. Jeśli to była przerwa, popraw w odcinkach.</span>':'');
 }
 function updateCalcs(){S.segs.forEach((s,i)=>{const el=document.querySelector('[data-calc="'+i+'"]');if(el){const k=segKm(i);el.textContent=hm(segMin(s))+' · '+(k==null?'— km':k+' km');}});}
 function renderAll(){
@@ -339,7 +356,10 @@ function summaryText(st){
   L.push("Logged KM: "+T.km+"  |  Logged time: "+hm(T.drive));
   L.push("Time of logging: "+hm(T.logging));
   st.mods.forEach((m,i)=>{if(m.id||m.tbStart||m.tbEnd)L.push("Data module "+(i+1)+": "+(m.id||"-")+"  "+(m.tbStart||"0")+" -> "+(m.tbEnd||"?")+" TB");});
+  if(T.odoTotal!=null&&Math.abs(T.odoTotal-T.km)>0.5)L.push("Km poza logowaniem: "+(Math.round((T.odoTotal-T.km)*10)/10));
   if(st.comment)L.push("Uwagi: "+st.comment);
+  L.push("");L.push("WORK TIME (do wpisania, zaokr. 15 min)");
+  workRows(T).forEach(w=>L.push("  "+w.name.padEnd(18)+hm(w.car).padStart(5)+"   (dokł. "+hm(w.exact)+")"));
   return L.join("\n");
 }
 
@@ -385,6 +405,8 @@ $("copy").addEventListener("click",()=>{const txt=summaryText(S);const out=$("ou
   if(!navigator.clipboard){selectOut();toast("Zaznaczone, skopiuj ręcznie");}});
 function selectOut(){const r=document.createRange();r.selectNodeContents($("out"));const s=getSelection();s.removeAllRanges();s.addRange(r);}
 
+$("endShift").addEventListener("click",()=>{const a=active();const n=nowHM();if(a)a.end=n;S.shiftEnd=n;save();renderAll();
+  toast("Zmiana zamknięta. Wpisz licznik końcowy i TB koniec.");const el=$("odoEnd");el.scrollIntoView({block:"center"});});
 $("newDay").addEventListener("click",()=>{$("confirmBox").hidden=false;});
 $("confirmNo").addEventListener("click",()=>{$("confirmBox").hidden=true;});
 $("confirmYes").addEventListener("click",()=>{const a=active();if(a)a.end=nowHM();
