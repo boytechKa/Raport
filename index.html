@@ -87,6 +87,9 @@ button{font:inherit;cursor:pointer;border-radius:8px;border:1px solid var(--line
 .warnline{color:var(--warn);font-weight:600;font-size:.92rem}
 .segtype{width:auto;max-width:65%;padding:6px 8px;font-family:var(--f-display);font-size:1.05rem;font-weight:600;background:transparent;border-color:transparent}
 .segtype:hover,.segtype:focus{border-color:var(--line);background:var(--panel)}
+.issue-box{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:6px}
+.issue-row{display:grid;grid-template-columns:7.5rem minmax(0,1fr) auto;gap:6px;align-items:center}
+.issue-row input{padding:8px}
 .extra{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
 .extra button{min-height:52px;font-family:var(--f-display);font-size:1.05rem;font-weight:600;letter-spacing:.03em}
 .extra .stop{color:var(--warn)}
@@ -141,7 +144,7 @@ pre.out{white-space:pre-wrap;font-family:var(--f-num);font-size:.82rem;backgroun
 <body>
 <div class="wrap">
   <div class="top">
-    <h1 id="screenTitle" data-v="8">Start zmiany</h1>
+    <h1 id="screenTitle" data-v="9">Start zmiany</h1>
     <button id="wake" class="btn-sm" type="button">Ekran: zwykły</button>
   </div>
 
@@ -184,6 +187,11 @@ pre.out{white-space:pre-wrap;font-family:var(--f-num);font-size:.82rem;backgroun
         <button type="button" data-cond="other">Inne</button>
         <button type="button" class="stop" data-cond="stop">Stop</button>
       </div>
+      <div class="issue-box">
+        <label for="issueNew">Issue (godzina doda się sama)
+          <span class="with-btn"><input id="issueNew" type="text" placeholder="np. nexus nie działa" autocomplete="off" enterkeyhint="done"><button type="button" class="btn-accent btn-sm" id="issueAdd">Dodaj</button></span></label>
+        <div id="issuesDrive" class="note"></div>
+      </div>
       <button type="button" class="btn-accent big" id="endShift">Koniec zmiany</button>
       <p class="note">Dotykaj warunków przy każdej zmianie drogi lub pory dnia. Przerwa techniczna to Technical issue, Twoja własna to Przerwa. Licznik wpisuj w odcinkach na postojach.</p>
     </section>
@@ -210,8 +218,12 @@ pre.out{white-space:pre-wrap;font-family:var(--f-num);font-size:.82rem;backgroun
     </section>
     <section aria-label="Uwagi">
       <h2>Uwagi</h2>
-      <label for="comment" class="panel" style="color:var(--muted)">Problemy z autem lub systemem, nietypowe sytuacje [godzina; miejsce]
-        <textarea id="comment"></textarea></label>
+      <div class="panel">
+        <div id="issuesEnd" style="display:flex;flex-direction:column;gap:6px"></div>
+        <label for="issueNew2">Dodaj issue
+          <span class="with-btn"><input id="issueNew2" type="text" placeholder="opis" autocomplete="off" enterkeyhint="done"><button type="button" class="btn-sm" id="issueAdd2">Dodaj</button></span></label>
+        <label for="comment">Dodatkowy komentarz<textarea id="comment"></textarea></label>
+      </div>
     </section>
     <section aria-label="Podsumowanie">
       <h2>Do tabeli</h2>
@@ -260,12 +272,12 @@ const $=id=>document.getElementById(id);
 
 function today(){const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
 function nowHM(){const d=new Date();return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");}
-function blank(){return{date:today(),reg:"",shiftStart:"",shiftEnd:"",odoStart:"",odoEnd:"",photos:{},weather:{day:"",dusk:"",night:""},mods:[{id:"",tbStart:"",tbEnd:""},{id:"",tbStart:"",tbEnd:""}],segs:[],comment:""};}
+function blank(){return{date:today(),reg:"",shiftStart:"",shiftEnd:"",odoStart:"",odoEnd:"",photos:{},weather:{day:"",dusk:"",night:""},mods:[{id:"",tbStart:"",tbEnd:""},{id:"",tbStart:"",tbEnd:""}],segs:[],issues:[],comment:""};}
 function load(k,def){try{const v=localStorage.getItem(k);return v?JSON.parse(v):def;}catch(e){return def;}}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){toast("Nie udało się zapisać w telefonie (brak miejsca?)");}}
 let S=load(KEY,null)||blank();
 let H=load(HKEY,[]);
-S.mods=S.mods||blank().mods; S.photos=S.photos||{}; S.weather=S.weather||blank().weather;
+S.mods=S.mods||blank().mods; S.issues=S.issues||[]; S.photos=S.photos||{}; S.weather=S.weather||blank().weather;
 
 function mins(t){if(!t)return null;const [h,m]=t.split(":").map(Number);return h*60+m;}
 function dur(a,b){const x=mins(a),y=mins(b);if(x==null||y==null)return 0;return y>=x?y-x:y+1440-x;}
@@ -291,6 +303,12 @@ function ensureStartSeg(){
   else if(S.segs.length===1&&S.segs[0].type==="prep"&&!S.segs[0].end){S.segs[0].start=S.shiftStart;}
 }
 function allTypes(){const o=[];for(const [p] of PERIODS)for(const [r] of ROADS)o.push(p+"-"+r);return o.concat(Object.keys(NONDRIVE));}
+function renderIssues(){
+  const I=S.issues;
+  $("issuesDrive").innerHTML=I.length?I.slice(-3).map(x=>esc(x.time)+' · '+esc(x.text)).join("<br>")+(I.length>3?'<br>…i '+(I.length-3)+' wcześniej':''):'';
+  $("issuesEnd").innerHTML=I.length?I.map((x,k)=>'<div class="issue-row"><input type="time" value="'+esc(x.time)+'" data-iss="'+k+'" data-if="time" aria-label="Godzina"><input type="text" value="'+esc(x.text)+'" data-iss="'+k+'" data-if="text" aria-label="Opis"><button type="button" class="btn-sm" data-idel="'+k+'">Usuń</button></div>').join(""):'<span class="note">Brak issues. Dodajesz je w trakcie jazdy na ekranie Jazda albo tutaj.</span>';
+}
+function addIssue(id){const el=$(id);const t=el.value.trim();if(!t){el.focus();return;}S.issues.push({time:nowHM(),text:t});el.value="";save();renderIssues();toast("Issue dodane "+nowHM());}
 function curPeriod(){const a=active();if(a&&a.type.includes("-"))return a.type.split("-")[0];return S.period||"day";}
 function renderGrid(){
   const a=active(),P=curPeriod();
@@ -379,6 +397,7 @@ function renderSummary(){
 }
 function updateCalcs(){S.segs.forEach((s,i)=>{const el=document.querySelector('[data-calc="'+i+'"]');if(el){const k=segKm(i);el.textContent=hm(segMin(s))+' · '+(k==null?'— km':k+' km');}});}
 function renderAll(){
+  renderIssues();
   for(const id of ["date","reg","shiftStart","shiftEnd","odoStart","odoEnd","comment"])$(id).value=S[id]||"";
   renderGrid();renderStatus();renderSegs();renderShiftPhotos();renderMods();renderSummary();renderHist();
 }
@@ -400,7 +419,8 @@ function summaryText(st){
   L.push("Time of logging: "+hm(T.logging));
   st.mods.forEach((m,i)=>{if(m.id||m.tbStart||m.tbEnd)L.push("Data module "+(i+1)+": "+(m.id||"-")+"  "+(m.tbStart||"0")+" -> "+(m.tbEnd||"?")+" TB");});
   if(T.odoTotal!=null&&Math.abs(T.odoTotal-T.km)>0.5)L.push("Km poza logowaniem: "+(Math.round((T.odoTotal-T.km)*10)/10));
-  if(st.comment)L.push("Uwagi: "+st.comment);
+  const iss=(st.issues||[]).filter(x=>x.text);
+  if(iss.length||st.comment){L.push("Uwagi:");iss.forEach((x,k)=>L.push("  "+(k+1)+". "+x.time+" "+x.text));if(st.comment)L.push("  "+st.comment);}
   L.push("");L.push("WORK TIME");
   workRows(T).forEach(w=>L.push("  "+w.name.padEnd(18)+hm(w.exact).padStart(5)));
   return L.join("\n");
@@ -444,6 +464,7 @@ document.addEventListener("input",e=>{
   if(["date","reg","shiftStart","shiftEnd","odoStart","odoEnd","comment"].includes(el.id)){S[el.id]=el.value;if(el.id==="shiftStart"){const had=S.segs.length;ensureStartSeg();if(S.segs.length!==had||S.segs.length===1){save();renderGrid();renderStatus();renderSegs();}}}
   else if(el.dataset.f){const i=+el.closest(".seg").dataset.i;S.segs[i][el.dataset.f]=el.value;if(el.dataset.f==="type"){save();renderAll();return;}updateCalcs();}
   else if(el.dataset.mf){S.mods[+el.dataset.m][el.dataset.mf]=el.value;}
+  else if(el.dataset.iss!=null){S.issues[+el.dataset.iss][el.dataset.if]=el.value;}
   else if(el.id==="qOdo"){const a=active();if(a)a.odo=el.value;updateCalcs();qPrev();}
   else if(el.id==="wCur"){S.weather[curPeriod()]=el.value;}
   else return;
@@ -456,6 +477,11 @@ $("copy").addEventListener("click",()=>{const txt=summaryText(S);const out=$("ou
   if(!navigator.clipboard){selectOut();toast("Zaznaczone, skopiuj ręcznie");}});
 function selectOut(){const r=document.createRange();r.selectNodeContents($("out"));const s=getSelection();s.removeAllRanges();s.addRange(r);}
 
+$("issueAdd").addEventListener("click",()=>addIssue("issueNew"));
+$("issueAdd2").addEventListener("click",()=>addIssue("issueNew2"));
+["issueNew","issueNew2"].forEach(id=>$(id).addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();addIssue(id);}}));
+$("issuesEnd").addEventListener("click",e=>{const b=e.target.closest("[data-idel]");if(!b)return;
+  if(b.dataset.armed){S.issues.splice(+b.dataset.idel,1);save();renderIssues();}else{b.dataset.armed="1";b.textContent="Na pewno?";setTimeout(()=>{if(b.isConnected){delete b.dataset.armed;b.textContent="Usuń";}},3000);}});
 $("endShift").addEventListener("click",()=>{const a=active();const n=nowHM();if(a)a.end=n;S.shiftEnd=n;save();renderAll();
   go("end");toast("Zmiana zamknięta. Wpisz licznik końcowy i TB koniec.");});
 const TITLES={start:"Start zmiany",drive:"Jazda",end:"Koniec i raport"};
