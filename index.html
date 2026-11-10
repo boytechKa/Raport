@@ -91,11 +91,25 @@ button{font:inherit;cursor:pointer;border-radius:8px;border:1px solid var(--line
 .issue-row{display:grid;grid-template-columns:7.5rem minmax(0,1fr) auto;gap:6px;align-items:center}
 .issue-row input{padding:8px}
 .newday{display:flex;flex-direction:column;gap:8px}
-#newDay{width:100%;border-style:dashed}
+#newDay{border-style:dashed}
 .block{border:2px solid var(--warn);color:var(--warn);background:var(--panel);border-radius:10px;padding:10px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .block b{color:var(--warn)}
 .block button{margin-left:auto}
 input.missing{border:2px solid var(--warn)}
+.start{gap:12px}
+.sf{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:12px}
+.sf .with-btn{gap:4px}
+.sf .with-btn .btn-sm{padding:6px 8px;flex:none}
+.sf input{padding:9px 10px;height:44px}
+.sf-mods{grid-column:1/-1;display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:10px}
+.sf-sep{grid-column:1/-1;font-family:var(--f-display);font-size:.9rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:flex;justify-content:space-between;align-items:baseline;gap:8px;border-top:1px solid var(--line);padding-top:8px;flex-wrap:wrap}
+.sf-sep .note{text-transform:none;letter-spacing:0;font-family:var(--f-body);font-size:.75rem}
+.sf-full{grid-column:1/-1}
+.sf-full:empty{display:none}
+input[type=date],input[type=time]{-webkit-appearance:none;appearance:none;min-width:0;display:block;text-align:left}
+input::-webkit-date-and-time-value{text-align:left}
+.top{min-height:40px}
+h1{font-size:1.5rem}
 .extra{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
 .extra button{min-height:52px;font-family:var(--f-display);font-size:1.05rem;font-weight:600;letter-spacing:.03em}
 .extra .stop{color:var(--warn)}
@@ -150,37 +164,28 @@ pre.out{white-space:pre-wrap;font-family:var(--f-num);font-size:.82rem;backgroun
 <body>
 <div class="wrap">
   <div class="top">
-    <h1 id="screenTitle" data-v="11">Start zmiany</h1>
-    <button id="wake" class="btn-sm" type="button">Ekran: zwykły</button>
+    <h1 id="screenTitle" data-v="12">Start zmiany</h1>
+    <button id="newDay" class="btn-sm" type="button">+ Nowy dzień</button>
+    <button id="wake" class="btn-sm" type="button" hidden>Ekran: zwykły</button>
   </div>
 
   <!-- EKRAN 1: START -->
-  <div class="screen" data-screen="start">
-    <div class="newday">
-      <button type="button" class="big" id="newDay">+ Nowy dzień</button>
-      <div id="confirmBox" hidden class="confirm">
-        <span>Zapisać poprzedni dzień w historii i zacząć nowy, z pustymi polami?</span>
-        <button type="button" class="btn-accent btn-sm" id="confirmYes">Tak, nowy dzień</button>
-        <button type="button" class="btn-sm" id="confirmNo">Anuluj</button>
-      </div>
+  <div class="screen start" data-screen="start">
+    <div id="confirmBox" hidden class="confirm">
+      <span>Zapisać poprzedni dzień w historii i zacząć nowy, z pustymi polami?</span>
+      <button type="button" class="btn-accent btn-sm" id="confirmYes">Tak, nowy dzień</button>
+      <button type="button" class="btn-sm" id="confirmNo">Anuluj</button>
     </div>
-    <section class="panel" aria-label="Zmiana">
-      <div class="row">
-        <label for="date">Data<input id="date" type="date"></label>
-        <label for="reg">Rejestracja<input id="reg" type="text" placeholder="np. AB12CDE" autocomplete="off"></label>
-      </div>
-      <div class="row">
-        <label for="shiftStart">Start zmiany
-          <span class="with-btn"><input id="shiftStart" type="time"><button type="button" class="btn-sm" data-now="shiftStart">Teraz</button></span></label>
-        <label for="odoStart">Licznik start [km]
-          <span class="with-btn"><input id="odoStart" class="num" type="number" inputmode="numeric" placeholder="0"><button type="button" class="btn-sm" data-photo="odoStart" aria-label="Zdjęcie licznika na starcie">Foto</button></span></label>
-      </div>
-      <div class="seg-tools" id="photosStart"></div>
-    </section>
-    <section aria-label="Nośniki na starcie">
-      <h2>Nośniki danych</h2>
-      <div class="panel" id="modsStart"></div>
-      <p class="note">ID wpisz od razu, TB start, gdy system się uruchomi.</p>
+    <section class="panel sf" aria-label="Zmiana">
+      <label for="date">Data<input id="date" type="date"></label>
+      <label for="reg">Rejestracja<input id="reg" type="text" placeholder="AB12CDE" autocomplete="off" autocapitalize="characters"></label>
+      <label for="shiftStart">Start zmiany
+        <span class="with-btn"><input id="shiftStart" type="time"><button type="button" class="btn-sm" data-now="shiftStart">Teraz</button></span></label>
+      <label for="odoStart">Licznik start [km]
+        <span class="with-btn"><input id="odoStart" class="num" type="number" inputmode="numeric" placeholder="0"><button type="button" class="btn-sm" data-photo="odoStart" aria-label="Zdjęcie licznika na starcie">Foto</button></span></label>
+      <div class="sf-sep">Nośniki danych <span class="note">TB start, gdy system wstanie</span></div>
+      <div id="modsStart" class="sf-mods"></div>
+      <div class="seg-tools sf-full" id="photosStart"></div>
     </section>
     <button type="button" class="btn-accent big" data-go="drive">Dalej: jazda</button>
   </div>
@@ -359,9 +364,9 @@ function renderSegs(){
 }
 function renderShiftPhotos(){const t=k=>S.photos[k]?'<img class="thumb" src="'+S.photos[k]+'" alt="Licznik" data-view="'+k+'">':'';$("photosStart").innerHTML=t("odoStart");$("photosEnd").innerHTML=t("odoEnd");}
 function renderMods(){
-  $("modsStart").innerHTML=S.mods.map((m,i)=>'<div class="row" style="grid-template-columns:1.5fr 1fr">'+
+  $("modsStart").innerHTML=S.mods.map((m,i)=>
     '<label for="m'+i+'id">Moduł '+(i+1)+' – ID<input id="m'+i+'id" type="text" value="'+esc(m.id)+'" data-m="'+i+'" data-mf="id" placeholder="ID_" autocomplete="off"></label>'+
-    '<label for="m'+i+'s">TB start<input id="m'+i+'s" class="num" type="number" inputmode="decimal" step="0.1" value="'+esc(m.tbStart)+'" data-m="'+i+'" data-mf="tbStart"></label></div>').join("");
+    '<label for="m'+i+'s">TB start<input id="m'+i+'s" class="num" type="number" inputmode="decimal" step="0.1" value="'+esc(m.tbStart)+'" data-m="'+i+'" data-mf="tbStart"></label>').join("");
   $("modsEnd").innerHTML=S.mods.map((m,i)=>'<div class="row" style="grid-template-columns:1.5fr 1fr">'+
     '<span style="display:flex;flex-direction:column;gap:4px;font-size:.8rem;color:var(--muted)">Moduł '+(i+1)+'<span class="num" style="font-size:1rem;color:var(--fg);padding:10px 0">'+(esc(m.id)||'–')+(m.tbStart?' · start '+esc(m.tbStart)+' TB':'')+'</span></span>'+
     '<label for="m'+i+'e">TB koniec<input id="m'+i+'e" class="num" type="number" inputmode="decimal" step="0.1" value="'+esc(m.tbEnd)+'" data-m="'+i+'" data-mf="tbEnd"></label></div>').join("");
@@ -507,7 +512,7 @@ $("endShift").addEventListener("click",()=>{const a=active();const n=nowHM();if(
   go("end");toast("Zmiana zamknięta. Wpisz licznik końcowy i TB koniec.");});
 const TITLES={start:"Start zmiany",drive:"Jazda",end:"Koniec i raport"};
 function go(name){if(!TITLES[name])name="start";document.querySelectorAll(".screen").forEach(el=>el.hidden=el.dataset.screen!==name);
-  document.querySelectorAll(".tabs button").forEach(b=>b.classList.toggle("on",b.dataset.go===name));$("screenTitle").textContent=TITLES[name];
+  document.querySelectorAll(".tabs button").forEach(b=>b.classList.toggle("on",b.dataset.go===name));$("screenTitle").textContent=TITLES[name];$("newDay").hidden=name!=="start";$("wake").hidden=name==="start";
   try{localStorage.setItem("rlog.screen",JSON.stringify(name));}catch(e){}window.scrollTo(0,0);}
 document.addEventListener("click",e=>{const b=e.target.closest("[data-go]");if(b)go(b.dataset.go);});
 $("newDay").addEventListener("click",()=>{$("confirmBox").hidden=false;});
