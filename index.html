@@ -84,6 +84,9 @@ button{font:inherit;cursor:pointer;border-radius:8px;border:1px solid var(--line
 .cond{min-height:76px;font-size:1.3rem}
 .quick{background:var(--panel);border:2px solid var(--accent);border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:6px}
 .quick input{font-size:1.4rem;padding:12px}
+.warnline{color:var(--warn);font-weight:600;font-size:.92rem}
+.segtype{width:auto;max-width:65%;padding:6px 8px;font-family:var(--f-display);font-size:1.05rem;font-weight:600;background:transparent;border-color:transparent}
+.segtype:hover,.segtype:focus{border-color:var(--line);background:var(--panel)}
 .extra{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
 .extra button{min-height:52px;font-family:var(--f-display);font-size:1.05rem;font-weight:600;letter-spacing:.03em}
 .extra .stop{color:var(--warn)}
@@ -138,7 +141,7 @@ pre.out{white-space:pre-wrap;font-family:var(--f-num);font-size:.82rem;backgroun
 <body>
 <div class="wrap">
   <div class="top">
-    <h1 id="screenTitle" data-v="7">Start zmiany</h1>
+    <h1 id="screenTitle" data-v="8">Start zmiany</h1>
     <button id="wake" class="btn-sm" type="button">Ekran: zwykły</button>
   </div>
 
@@ -282,6 +285,12 @@ function esc(s){return String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt
 
 /* ---------- render ---------- */
 function qPrev(){const el=document.getElementById("qPrev");if(!el)return;const i=S.segs.length-2;const k=segKm(i);el.textContent="Poprzedni odcinek ("+label(S.segs[i].type)+"): "+(k==null?"brak licznika":k+" km");}
+function ensureStartSeg(){
+  if(!S.shiftStart)return;
+  if(!S.segs.length){S.segs.push({type:"prep",start:S.shiftStart,end:"",odo:"",km:""});}
+  else if(S.segs.length===1&&S.segs[0].type==="prep"&&!S.segs[0].end){S.segs[0].start=S.shiftStart;}
+}
+function allTypes(){const o=[];for(const [p] of PERIODS)for(const [r] of ROADS)o.push(p+"-"+r);return o.concat(Object.keys(NONDRIVE));}
 function curPeriod(){const a=active();if(a&&a.type.includes("-"))return a.type.split("-")[0];return S.period||"day";}
 function renderGrid(){
   const a=active(),P=curPeriod();
@@ -294,7 +303,10 @@ function renderGrid(){
       return '<button type="button" class="cond'+(a&&a.type===t?' active':'')+'" data-cond="'+t+'" aria-pressed="'+(a&&a.type===t)+'">'+rl+'<small>'+hm(m)+'</small></button>';}).join("")+'</div></div>';
   if(a){const ai=S.segs.length-1;let last="";for(let k=ai-1;k>=0;k--){if(num(S.segs[k].odo)!=null){last=S.segs[k].odo;break;}}if(!last&&S.odoStart)last=S.odoStart;
     h+='<div class="quick"><label for="qOdo">Licznik teraz [km] · '+esc(label(a.type))+'<span class="with-btn"><input id="qOdo" class="num" type="number" inputmode="numeric" value="'+esc(a.odo)+'" placeholder="'+(last?'ostatnio '+esc(last):'km')+'"><button type="button" class="btn-sm" data-photo="seg'+ai+'">Foto</button></span></label>'+
-      (ai>0?'<span class="note" id="qPrev"></span>':'')+'</div>';}
+      (ai>0?'<span class="note" id="qPrev"></span>':'')+
+      (a.type==="prep"?(segMin(a)>=30?'<span class="warnline">Stoicie już '+hm(segMin(a))+'. Jeśli to przez system albo auto, zamień na Technical issue.</span>':'')+
+        '<div class="tri" style="grid-template-columns:1fr 1fr"><button type="button" class="btn-sm" data-conv="split">Od teraz Technical issue</button><button type="button" class="btn-sm" data-conv="all">Całość jako Technical issue</button></div>':'')+
+      '</div>';}
   $("grid").innerHTML=h;qPrev();
   document.querySelectorAll(".extra button").forEach(b=>b.classList.toggle("active",!!(a&&a.type===b.dataset.cond)));
 }
@@ -305,7 +317,7 @@ function renderSegs(){
   $("segCount").textContent=S.segs.length+" odc.";
   box.innerHTML=S.segs.map((s,i)=>{const p=s.type.includes("-")?s.type.split("-")[0]:s.type;const km=segKm(i);
     return '<div class="seg'+(!s.end?' live':'')+'" data-p="'+p+'" data-i="'+i+'">'+
-      '<div class="seg-head"><b>'+label(s.type)+'</b><span class="num" data-calc="'+i+'">'+hm(segMin(s))+' · '+(km==null?'— km':km+' km')+'</span></div>'+
+      '<div class="seg-head"><select class="segtype" data-f="type" aria-label="Rodzaj odcinka">'+allTypes().map(t=>'<option value="'+t+'"'+(t===s.type?' selected':'')+'>'+label(t)+'</option>').join("")+'</select><span class="num" data-calc="'+i+'">'+hm(segMin(s))+' · '+(km==null?'— km':km+' km')+'</span></div>'+
       '<div class="seg-fields">'+
         '<label for="s'+i+'start">Od<input id="s'+i+'start" type="time" value="'+esc(s.start)+'" data-f="start"></label>'+
         '<label for="s'+i+'end">Do<input id="s'+i+'end" type="time" value="'+esc(s.end)+'" data-f="end"></label>'+
@@ -414,7 +426,11 @@ document.addEventListener("click",e=>{
   if(b.dataset.cond){tap(b.dataset.cond);return;}
   if(b.dataset.period){const np=b.dataset.period,a=active();S.period=np;
     if(a&&a.type.includes("-")&&a.type.split("-")[0]!==np){tap(np+"-"+a.type.split("-")[1]);toast("Zmiana pory: "+PERIODS.find(x=>x[0]===np)[1]);}else{save();renderAll();}return;}
-  if(b.dataset.now){S[b.dataset.now]=nowHM();save();renderAll();return;}
+  if(b.dataset.now){S[b.dataset.now]=nowHM();if(b.dataset.now==="shiftStart"){ensureStartSeg();toast("Start zmiany: liczy się Przygotowanie");}save();renderAll();return;}
+  if(b.dataset.conv){const a=active();if(!a)return;const n=nowHM();
+    if(b.dataset.conv==="all"){a.type="tech";toast("Całość zamieniona na Technical issue");}
+    else{a.end=n;S.segs.push({type:"tech",start:n,end:"",odo:"",km:""});toast("Od teraz Technical issue");}
+    save();renderAll();return;}
   if(b.dataset.photo){photoTarget=b.dataset.photo;$("photoInput").click();return;}
   if(b.dataset.view){$("viewerImg").src=S.photos[b.dataset.view];$("viewer").hidden=false;return;}
   if(b.dataset.del!=null){const i=+b.dataset.del;if(b.dataset.armed){S.segs.splice(i,1);
@@ -425,8 +441,8 @@ $("viewer").addEventListener("click",()=>{$("viewer").hidden=true;});
 
 document.addEventListener("input",e=>{
   const el=e.target;
-  if(["date","reg","shiftStart","shiftEnd","odoStart","odoEnd","comment"].includes(el.id)){S[el.id]=el.value;}
-  else if(el.dataset.f){const i=+el.closest(".seg").dataset.i;S.segs[i][el.dataset.f]=el.value;updateCalcs();}
+  if(["date","reg","shiftStart","shiftEnd","odoStart","odoEnd","comment"].includes(el.id)){S[el.id]=el.value;if(el.id==="shiftStart"){const had=S.segs.length;ensureStartSeg();if(S.segs.length!==had||S.segs.length===1){save();renderGrid();renderStatus();renderSegs();}}}
+  else if(el.dataset.f){const i=+el.closest(".seg").dataset.i;S.segs[i][el.dataset.f]=el.value;if(el.dataset.f==="type"){save();renderAll();return;}updateCalcs();}
   else if(el.dataset.mf){S.mods[+el.dataset.m][el.dataset.mf]=el.value;}
   else if(el.id==="qOdo"){const a=active();if(a)a.odo=el.value;updateCalcs();qPrev();}
   else if(el.id==="wCur"){S.weather[curPeriod()]=el.value;}
@@ -475,6 +491,7 @@ $("wake").addEventListener("click",async()=>{try{if(lock){await lock.release();l
 let tt;function toast(m){const t=$("toast");t.textContent=m;t.hidden=false;clearTimeout(tt);tt=setTimeout(()=>t.hidden=true,1800);}
 
 setInterval(()=>{if(active()){renderStatus();updateCalcs();renderSummary();
+  if(active().type==="prep"&&document.activeElement&&document.activeElement.id!=="qOdo")renderGrid();
   const a=active();const btn=document.querySelector('.cond[data-cond="'+a.type+'"] small');if(btn)btn.textContent=hm(S.segs.filter(s=>s.type===a.type).reduce((x,s)=>x+segMin(s),0));}},20000);
 
 renderAll();
