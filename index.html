@@ -306,10 +306,7 @@ function totals(){
 }
 function workRows(T){
   const rows=[["Drive preparation",T.prep],["Drive",T.drive],["Breaks",T.brk],["Copying",T.copy],["Other",T.other+T.untracked],["Technical issue",T.tech]];
-  const r15=m=>Math.round(m/15)*15;
-  const rounded=rows.map(r=>r15(r[1]));const total=r15(T.shift);
-  const diff=total-rounded.reduce((a,b)=>a+b,0);rounded[1]=Math.max(0,rounded[1]+diff);
-  return rows.map((r,i)=>({name:r[0],exact:r[1],car:rounded[i]})).concat([{name:"Sum",exact:T.shift,car:total}]);
+  return rows.map(r=>({name:r[0],exact:r[1]})).concat([{name:"Sum",exact:T.shift}]);
 }
 function renderSummary(){
   const T=totals();
@@ -329,8 +326,8 @@ function renderSummary(){
     (T.odoTotal!=null&&Math.abs(T.odoTotal-T.km)>0.5?'<span>Km poza logowaniem (tech, dojazdy)</span><span>'+(Math.round((T.odoTotal-T.km)*10)/10)+'</span>':'')+
     (miss?'<span class="note" style="grid-column:1/-1">* brakuje licznika w części odcinków, te km nie są jeszcze policzone</span>':'');
   const W=workRows(T);
-  $("workKv").innerHTML='<span class="note">Do drugiego systemu (zaokr. do 15 min)</span><span class="note">dokładnie / wpisz</span>'+
-    W.map(w=>'<span>'+(w.name==="Sum"?'<b>Sum</b>':w.name)+'</span><span>'+hm(w.exact)+' / <b>'+hm(w.car)+'</b></span>').join("")+
+  $("workKv").innerHTML='<span class="note">Do drugiego systemu</span><span class="note">h:mm</span>'+
+    W.map(w=>'<span>'+(w.name==="Sum"?'<b>Sum</b>':w.name)+'</span><span>'+(w.name==="Sum"?'<b>'+hm(w.exact)+'</b>':hm(w.exact))+'</span>').join("")+
     (T.untracked>4?'<span class="note" style="grid-column:1/-1">'+hm(T.untracked)+' bez żadnego statusu doliczone do Other. Jeśli to była przerwa, popraw w odcinkach.</span>':'');
 }
 function updateCalcs(){S.segs.forEach((s,i)=>{const el=document.querySelector('[data-calc="'+i+'"]');if(el){const k=segKm(i);el.textContent=hm(segMin(s))+' · '+(k==null?'— km':k+' km');}});}
@@ -358,8 +355,8 @@ function summaryText(st){
   st.mods.forEach((m,i)=>{if(m.id||m.tbStart||m.tbEnd)L.push("Data module "+(i+1)+": "+(m.id||"-")+"  "+(m.tbStart||"0")+" -> "+(m.tbEnd||"?")+" TB");});
   if(T.odoTotal!=null&&Math.abs(T.odoTotal-T.km)>0.5)L.push("Km poza logowaniem: "+(Math.round((T.odoTotal-T.km)*10)/10));
   if(st.comment)L.push("Uwagi: "+st.comment);
-  L.push("");L.push("WORK TIME (do wpisania, zaokr. 15 min)");
-  workRows(T).forEach(w=>L.push("  "+w.name.padEnd(18)+hm(w.car).padStart(5)+"   (dokł. "+hm(w.exact)+")"));
+  L.push("");L.push("WORK TIME");
+  workRows(T).forEach(w=>L.push("  "+w.name.padEnd(18)+hm(w.exact).padStart(5)));
   return L.join("\n");
 }
 
