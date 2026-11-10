@@ -144,7 +144,7 @@ pre.out{white-space:pre-wrap;font-family:var(--f-num);font-size:.82rem;backgroun
 <body>
 <div class="wrap">
   <div class="top">
-    <h1 id="screenTitle" data-v="9">Start zmiany</h1>
+    <h1 id="screenTitle" data-v="10">Start zmiany</h1>
     <button id="wake" class="btn-sm" type="button">Ekran: zwykły</button>
   </div>
 
@@ -237,7 +237,7 @@ pre.out{white-space:pre-wrap;font-family:var(--f-num);font-size:.82rem;backgroun
           <button type="button" id="newDay">Nowy dzień</button>
         </div>
         <div id="confirmBox" hidden class="confirm">
-          <span>Zapisać ten dzień w historii i zacząć nowy?</span>
+          <span>Zapisać ten dzień w historii i zacząć nowy, z pustymi polami?</span>
           <button type="button" class="btn-accent btn-sm" id="confirmYes">Tak, nowy dzień</button>
           <button type="button" class="btn-sm" id="confirmNo">Anuluj</button>
         </div>
@@ -493,8 +493,7 @@ $("newDay").addEventListener("click",()=>{$("confirmBox").hidden=false;});
 $("confirmNo").addEventListener("click",()=>{$("confirmBox").hidden=true;});
 $("confirmYes").addEventListener("click",()=>{const a=active();if(a)a.end=nowHM();
   if(S.segs.length||S.odoStart||S.shiftStart){const copy=JSON.parse(JSON.stringify(S));copy.photos={};H.unshift({savedAt:Date.now(),state:copy});H=H.slice(0,60);try{localStorage.setItem(HKEY,JSON.stringify(H));}catch(e){}}
-  const keep={reg:S.reg,mods:S.mods.map(m=>({id:m.id,tbStart:m.tbEnd||m.tbStart,tbEnd:""}))};
-  S=blank();S.reg=keep.reg;S.mods=keep.mods;save();$("confirmBox").hidden=true;$("out").hidden=true;renderAll();go("start");toast("Nowy dzień");});
+  S=blank();save();$("confirmBox").hidden=true;$("out").hidden=true;renderAll();go("start");toast("Nowy dzień");});
 
 function renderHist(){
   if(!H.length){$("hist").innerHTML='<div class="empty">Zapisane dni pojawią się tutaj po „Nowy dzień".</div>';return;}
