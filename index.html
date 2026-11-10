@@ -90,6 +90,12 @@ button{font:inherit;cursor:pointer;border-radius:8px;border:1px solid var(--line
 .issue-box{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:6px}
 .issue-row{display:grid;grid-template-columns:7.5rem minmax(0,1fr) auto;gap:6px;align-items:center}
 .issue-row input{padding:8px}
+.newday{display:flex;flex-direction:column;gap:8px}
+#newDay{width:100%;border-style:dashed}
+.block{border:2px solid var(--warn);color:var(--warn);background:var(--panel);border-radius:10px;padding:10px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.block b{color:var(--warn)}
+.block button{margin-left:auto}
+input.missing{border:2px solid var(--warn)}
 .extra{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
 .extra button{min-height:52px;font-family:var(--f-display);font-size:1.05rem;font-weight:600;letter-spacing:.03em}
 .extra .stop{color:var(--warn)}
@@ -144,12 +150,20 @@ pre.out{white-space:pre-wrap;font-family:var(--f-num);font-size:.82rem;backgroun
 <body>
 <div class="wrap">
   <div class="top">
-    <h1 id="screenTitle" data-v="10">Start zmiany</h1>
+    <h1 id="screenTitle" data-v="11">Start zmiany</h1>
     <button id="wake" class="btn-sm" type="button">Ekran: zwykły</button>
   </div>
 
   <!-- EKRAN 1: START -->
   <div class="screen" data-screen="start">
+    <div class="newday">
+      <button type="button" class="big" id="newDay">+ Nowy dzień</button>
+      <div id="confirmBox" hidden class="confirm">
+        <span>Zapisać poprzedni dzień w historii i zacząć nowy, z pustymi polami?</span>
+        <button type="button" class="btn-accent btn-sm" id="confirmYes">Tak, nowy dzień</button>
+        <button type="button" class="btn-sm" id="confirmNo">Anuluj</button>
+      </div>
+    </div>
     <section class="panel" aria-label="Zmiana">
       <div class="row">
         <label for="date">Data<input id="date" type="date"></label>
@@ -179,6 +193,7 @@ pre.out{white-space:pre-wrap;font-family:var(--f-num);font-size:.82rem;backgroun
         <span class="clock" id="nowDur">0:00</span>
       </div>
       <div class="grid" id="grid"></div>
+      <div id="blockMsg" class="block" hidden></div>
       <div class="extra">
         <button type="button" data-cond="prep">Przygotowanie</button>
         <button type="button" data-cond="tech">Technical issue</button>
@@ -234,12 +249,6 @@ pre.out{white-space:pre-wrap;font-family:var(--f-num);font-size:.82rem;backgroun
         <div class="kv" id="workKv"></div>
         <div class="with-btn" style="flex-wrap:wrap">
           <button type="button" class="btn-accent" id="copy">Kopiuj podsumowanie</button>
-          <button type="button" id="newDay">Nowy dzień</button>
-        </div>
-        <div id="confirmBox" hidden class="confirm">
-          <span>Zapisać ten dzień w historii i zacząć nowy, z pustymi polami?</span>
-          <button type="button" class="btn-accent btn-sm" id="confirmYes">Tak, nowy dzień</button>
-          <button type="button" class="btn-sm" id="confirmNo">Anuluj</button>
         </div>
         <pre class="out" id="out" hidden></pre>
       </div>
@@ -427,7 +436,18 @@ function summaryText(st){
 }
 
 /* ---------- actions ---------- */
+function missingStart(){const m=[];
+  if(!S.reg.trim())m.push(["reg","rejestracja"]);
+  if(num(S.odoStart)==null)m.push(["odoStart","licznik start"]);
+  if(!S.mods[0].id.trim())m.push(["m0id","ID dysku (moduł 1)"]);
+  if(num(S.mods[0].tbStart)==null)m.push(["m0s","TB start (moduł 1)"]);
+  return m;}
+function markMissing(){const ids=missingStart().map(x=>x[0]);["reg","odoStart","m0id","m0s"].forEach(id=>{const el=document.getElementById(id);if(el)el.classList.toggle("missing",ids.includes(id));});}
 function tap(cond){
+  if(cond.includes("-")){const m=missingStart();const box=$("blockMsg");
+    if(m.length){box.innerHTML='<b>Nie uzupełniono startu:</b> '+m.map(x=>x[1]).join(", ")+'.<button type="button" class="btn-accent btn-sm" id="fixStart">Uzupełnij</button>';box.hidden=false;
+      $("fixStart").onclick=()=>{box.hidden=true;go("start");markMissing();const el=document.getElementById(m[0][0]);if(el)el.focus();};return;}
+    box.hidden=true;}
   const now=nowHM(),a=active();if(cond.includes("-"))S.period=cond.split("-")[0];
   if(a){a.end=now;}
   if(cond!=="stop"&&!(a&&a.type===cond)){
@@ -468,6 +488,7 @@ document.addEventListener("input",e=>{
   else if(el.id==="qOdo"){const a=active();if(a)a.odo=el.value;updateCalcs();qPrev();}
   else if(el.id==="wCur"){S.weather[curPeriod()]=el.value;}
   else return;
+  if(document.querySelector(".missing"))markMissing();
   save();renderSummary();if(el.id==="odoStart"||el.id==="odoEnd")updateCalcs();
   if(el.dataset.f==="start"||el.dataset.f==="end"){renderGrid();renderStatus();}
 });
