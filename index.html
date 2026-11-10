@@ -111,110 +111,137 @@ pre.out{white-space:pre-wrap;font-family:var(--f-num);font-size:.82rem;backgroun
 .viewer{position:fixed;inset:0;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;z-index:30;padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
 .viewer img{max-width:100%;max-height:100%;border-radius:8px}
 @media (max-width:420px){.seg-fields{grid-template-columns:repeat(2,minmax(0,1fr))}.grid{grid-template-columns:3.6rem repeat(3,minmax(0,1fr))}}
+
+.screen{display:flex;flex-direction:column;gap:18px}
+.big{min-height:54px;font-family:var(--f-display);font-size:1.15rem;letter-spacing:.03em}
+.wrap{padding-bottom:calc(96px + env(safe-area-inset-bottom,0px))}
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:15;display:grid;grid-template-columns:repeat(3,1fr);gap:6px;background:var(--panel);border-top:1px solid var(--line);padding:8px max(16px,env(safe-area-inset-right,0px)) calc(8px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.tabs button{min-height:52px;font-family:var(--f-display);font-size:1.05rem;font-weight:600;letter-spacing:.04em;display:flex;align-items:center;justify-content:center;gap:8px}
+.tabs button b{font-family:var(--f-num);font-size:.8rem;width:22px;height:22px;border-radius:50%;border:1px solid currentColor;display:inline-flex;align-items:center;justify-content:center}
+.tabs button.on{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+.tabs .dot{margin:0}
+.extra button{padding:6px 4px;font-size:clamp(.85rem,3.6vw,1.05rem);hyphens:auto;overflow-wrap:anywhere}
+.toast{bottom:calc(84px + env(safe-area-inset-bottom,0px))}
 </style>
 
 </head>
 <body>
 <div class="wrap">
   <div class="top">
-    <h1>Dziennik jazd</h1>
-    <div class="with-btn">
-      <button id="wake" class="btn-sm" type="button">Ekran: zwykły</button>
-    </div>
+    <h1 id="screenTitle">Start zmiany</h1>
+    <button id="wake" class="btn-sm" type="button">Ekran: zwykły</button>
   </div>
 
-  <section class="panel" aria-label="Zmiana">
-    <div class="row">
-      <label for="date">Data<input id="date" type="date"></label>
-      <label for="reg">Rejestracja<input id="reg" type="text" placeholder="np. AB12CDE" autocomplete="off"></label>
-    </div>
-    <div class="row">
-      <label for="shiftStart">Start zmiany
-        <span class="with-btn"><input id="shiftStart" type="time"><button type="button" class="btn-sm" data-now="shiftStart">Teraz</button></span></label>
-      <label for="shiftEnd">Koniec zmiany
-        <span class="with-btn"><input id="shiftEnd" type="time"><button type="button" class="btn-sm" data-now="shiftEnd">Teraz</button></span></label>
-    </div>
-    <div class="row">
-      <label for="odoStart">Licznik start [km]
-        <span class="with-btn"><input id="odoStart" class="num" type="number" inputmode="numeric" placeholder="0"><button type="button" class="btn-sm" data-photo="odoStart" aria-label="Zdjęcie licznika na starcie">Foto</button></span></label>
-      <label for="odoEnd">Licznik koniec [km]
-        <span class="with-btn"><input id="odoEnd" class="num" type="number" inputmode="numeric" placeholder="0"><button type="button" class="btn-sm" data-photo="odoEnd" aria-label="Zdjęcie licznika na końcu">Foto</button></span></label>
-    </div>
-    <div class="seg-tools" id="shiftPhotos"></div>
-  </section>
-
-  <section aria-label="Nośniki danych">
-    <h2>Nośniki danych</h2>
-    <div class="panel" id="mods"></div>
-  </section>
-
-  <section aria-label="Jazda">
-    <div class="status">
-      <span class="now"><span id="dot" class="dot"></span><span id="nowLabel">Brak aktywnego odcinka</span></span>
-      <span class="clock" id="nowDur">0:00</span>
-    </div>
-    <div class="grid" id="grid"></div>
-    <div class="extra">
-      <button type="button" data-cond="prep">Przygotowanie</button>
-      <button type="button" data-cond="tech">Technical issue</button>
-      <button type="button" data-cond="break">Przerwa</button>
-      <button type="button" data-cond="copy">Kopiowanie</button>
-      <button type="button" data-cond="other">Inne</button>
-      <button type="button" class="stop" data-cond="stop">Stop</button>
-    </div>
-    <button type="button" class="btn-accent" id="endShift" style="min-height:52px;font-family:var(--f-display);font-size:1.1rem;letter-spacing:.03em">Koniec zmiany</button>
-    <p class="note">Start: wpisz rejestrację, licznik i ID dysku, potem Przygotowanie albo Technical issue, gdy system się uruchamia. TB start wpisz, gdy system wstanie. W trasie dotykaj warunków przy każdej zmianie drogi lub pory dnia. Przerwa techniczna to Technical issue, Twoja własna to Przerwa. Na koniec Kopiowanie, a po zamknięciu systemów Koniec zmiany.</p>
-  </section>
-
-  <section aria-label="Pogoda">
-    <h2>Pogoda</h2>
-    <div class="panel">
-      <div class="row" style="grid-template-columns:repeat(3,minmax(0,1fr))">
-        <label for="wDay">Day<select id="wDay"></select></label>
-        <label for="wDusk">Dusk/Dawn<select id="wDusk"></select></label>
-        <label for="wNight">Night<select id="wNight"></select></label>
+  <!-- EKRAN 1: START -->
+  <div class="screen" data-screen="start">
+    <section class="panel" aria-label="Zmiana">
+      <div class="row">
+        <label for="date">Data<input id="date" type="date"></label>
+        <label for="reg">Rejestracja<input id="reg" type="text" placeholder="np. AB12CDE" autocomplete="off"></label>
       </div>
-    </div>
-  </section>
-
-  <section aria-label="Odcinki">
-    <div class="top"><h2>Odcinki</h2><span class="note" id="segCount"></span></div>
-    <div id="segs" style="display:flex;flex-direction:column;gap:8px"></div>
-  </section>
-
-
-  <section aria-label="Uwagi">
-    <h2>Uwagi</h2>
-    <label for="comment" class="panel" style="color:var(--muted)">Problemy z autem lub systemem, nietypowe sytuacje [godzina; miejsce]
-      <textarea id="comment"></textarea></label>
-  </section>
-
-  <section aria-label="Podsumowanie">
-    <h2>Do tabeli</h2>
-    <div class="panel">
-      <div class="tbl-wrap"><table id="sumTable"></table></div>
-      <div class="kv" id="sumKv"></div>
-      <h2 style="margin-top:4px">Czas pracy</h2>
-      <div class="kv" id="workKv"></div>
-      <div class="with-btn" style="flex-wrap:wrap">
-        <button type="button" class="btn-accent" id="copy">Kopiuj podsumowanie</button>
-        <button type="button" id="newDay">Nowy dzień</button>
+      <div class="row">
+        <label for="shiftStart">Start zmiany
+          <span class="with-btn"><input id="shiftStart" type="time"><button type="button" class="btn-sm" data-now="shiftStart">Teraz</button></span></label>
+        <label for="odoStart">Licznik start [km]
+          <span class="with-btn"><input id="odoStart" class="num" type="number" inputmode="numeric" placeholder="0"><button type="button" class="btn-sm" data-photo="odoStart" aria-label="Zdjęcie licznika na starcie">Foto</button></span></label>
       </div>
-      <div id="confirmBox" hidden class="confirm">
-        <span>Zapisać ten dzień w historii i zacząć nowy?</span>
-        <button type="button" class="btn-accent btn-sm" id="confirmYes">Tak, nowy dzień</button>
-        <button type="button" class="btn-sm" id="confirmNo">Anuluj</button>
-      </div>
-      <pre class="out" id="out" hidden></pre>
-    </div>
-  </section>
+      <div class="seg-tools" id="photosStart"></div>
+    </section>
+    <section aria-label="Nośniki na starcie">
+      <h2>Nośniki danych</h2>
+      <div class="panel" id="modsStart"></div>
+      <p class="note">ID wpisz od razu, TB start, gdy system się uruchomi.</p>
+    </section>
+    <button type="button" class="btn-accent big" data-go="drive">Dalej: jazda</button>
+  </div>
 
-  <section aria-label="Historia">
-    <h2>Historia dni</h2>
-    <div class="panel" id="hist"></div>
-    <p class="note">Wszystko zapisuje się tylko w tym telefonie, w tej przeglądarce. Nic nie wychodzi na zewnątrz. Na koniec dnia skopiuj podsumowanie, bo wyczyszczenie danych przeglądarki usuwa zapis.</p>
-  </section>
+  <!-- EKRAN 2: JAZDA -->
+  <div class="screen" data-screen="drive" hidden>
+    <section aria-label="Jazda">
+      <div class="status">
+        <span class="now"><span id="dot" class="dot"></span><span id="nowLabel">Brak aktywnego odcinka</span></span>
+        <span class="clock" id="nowDur">0:00</span>
+      </div>
+      <div class="grid" id="grid"></div>
+      <div class="extra">
+        <button type="button" data-cond="prep">Przygotowanie</button>
+        <button type="button" data-cond="tech">Technical issue</button>
+        <button type="button" data-cond="break">Przerwa</button>
+        <button type="button" data-cond="copy">Kopiowanie</button>
+        <button type="button" data-cond="other">Inne</button>
+        <button type="button" class="stop" data-cond="stop">Stop</button>
+      </div>
+      <button type="button" class="btn-accent big" id="endShift">Koniec zmiany</button>
+      <p class="note">Dotykaj warunków przy każdej zmianie drogi lub pory dnia. Przerwa techniczna to Technical issue, Twoja własna to Przerwa. Licznik wpisuj w odcinkach na postojach.</p>
+    </section>
+    <section aria-label="Pogoda">
+      <h2>Pogoda</h2>
+      <div class="panel">
+        <div class="row" style="grid-template-columns:repeat(3,minmax(0,1fr))">
+          <label for="wDay">Day<select id="wDay"></select></label>
+          <label for="wDusk">Dusk/Dawn<select id="wDusk"></select></label>
+          <label for="wNight">Night<select id="wNight"></select></label>
+        </div>
+      </div>
+    </section>
+    <section aria-label="Odcinki">
+      <div class="top"><h2>Odcinki</h2><span class="note" id="segCount"></span></div>
+      <div id="segs" style="display:flex;flex-direction:column;gap:8px"></div>
+    </section>
+  </div>
+
+  <!-- EKRAN 3: KONIEC / RAPORT -->
+  <div class="screen" data-screen="end" hidden>
+    <section class="panel" aria-label="Koniec zmiany">
+      <div class="row">
+        <label for="shiftEnd">Koniec zmiany
+          <span class="with-btn"><input id="shiftEnd" type="time"><button type="button" class="btn-sm" data-now="shiftEnd">Teraz</button></span></label>
+        <label for="odoEnd">Licznik koniec [km]
+          <span class="with-btn"><input id="odoEnd" class="num" type="number" inputmode="numeric" placeholder="0"><button type="button" class="btn-sm" data-photo="odoEnd" aria-label="Zdjęcie licznika na końcu">Foto</button></span></label>
+      </div>
+      <div class="seg-tools" id="photosEnd"></div>
+    </section>
+    <section aria-label="Nośniki na końcu">
+      <h2>Nośniki danych</h2>
+      <div class="panel" id="modsEnd"></div>
+    </section>
+    <section aria-label="Uwagi">
+      <h2>Uwagi</h2>
+      <label for="comment" class="panel" style="color:var(--muted)">Problemy z autem lub systemem, nietypowe sytuacje [godzina; miejsce]
+        <textarea id="comment"></textarea></label>
+    </section>
+    <section aria-label="Podsumowanie">
+      <h2>Do tabeli</h2>
+      <div class="panel">
+        <div class="tbl-wrap"><table id="sumTable"></table></div>
+        <div class="kv" id="sumKv"></div>
+        <h2 style="margin-top:4px">Work time</h2>
+        <div class="kv" id="workKv"></div>
+        <div class="with-btn" style="flex-wrap:wrap">
+          <button type="button" class="btn-accent" id="copy">Kopiuj podsumowanie</button>
+          <button type="button" id="newDay">Nowy dzień</button>
+        </div>
+        <div id="confirmBox" hidden class="confirm">
+          <span>Zapisać ten dzień w historii i zacząć nowy?</span>
+          <button type="button" class="btn-accent btn-sm" id="confirmYes">Tak, nowy dzień</button>
+          <button type="button" class="btn-sm" id="confirmNo">Anuluj</button>
+        </div>
+        <pre class="out" id="out" hidden></pre>
+      </div>
+    </section>
+    <section aria-label="Historia">
+      <h2>Historia dni</h2>
+      <div class="panel" id="hist"></div>
+      <p class="note">Wszystko zapisuje się tylko w tym telefonie. Na koniec dnia skopiuj podsumowanie, bo wyczyszczenie danych przeglądarki usuwa zapis.</p>
+    </section>
+  </div>
 </div>
+
+<nav class="tabs" aria-label="Ekrany">
+  <button type="button" data-go="start"><b>1</b>Start</button>
+  <button type="button" data-go="drive"><b>2</b>Jazda<i id="tabLive" class="dot on" hidden></i></button>
+  <button type="button" data-go="end"><b>3</b>Koniec</button>
+</nav>
 
 <input type="file" id="photoInput" accept="image/*" capture="environment" hidden>
 <div id="viewer" class="viewer" hidden><img id="viewerImg" alt="Zdjęcie licznika"></div>
@@ -265,7 +292,7 @@ function renderGrid(){
   $("grid").innerHTML=h;
   document.querySelectorAll(".extra button").forEach(b=>b.classList.toggle("active",!!(a&&a.type===b.dataset.cond)));
 }
-function renderStatus(){const a=active();$("dot").classList.toggle("on",!!a);$("nowLabel").textContent=a?label(a.type):"Brak aktywnego odcinka";$("nowDur").textContent=a?hm(segMin(a)):"0:00";}
+function renderStatus(){const a=active();const tl=document.getElementById("tabLive");if(tl)tl.hidden=!a;$("dot").classList.toggle("on",!!a);$("nowLabel").textContent=a?label(a.type):"Brak aktywnego odcinka";$("nowDur").textContent=a?hm(segMin(a)):"0:00";}
 function renderSegs(){
   const box=$("segs");
   if(!S.segs.length){box.innerHTML='<div class="empty">Jeszcze nic. Zacznij od dotknięcia warunków, w których jedziesz.</div>';$("segCount").textContent="";return;}
@@ -285,11 +312,13 @@ function renderSegs(){
         '<button type="button" class="btn-sm" data-del="'+i+'" style="margin-left:auto">Usuń</button>'+
       '</div></div>';}).join("");
 }
-function renderShiftPhotos(){let h="";for(const k of ["odoStart","odoEnd"])if(S.photos[k])h+='<img class="thumb" src="'+S.photos[k]+'" alt="Licznik '+(k==="odoStart"?"start":"koniec")+'" data-view="'+k+'"> ';$("shiftPhotos").innerHTML=h;}
+function renderShiftPhotos(){const t=k=>S.photos[k]?'<img class="thumb" src="'+S.photos[k]+'" alt="Licznik" data-view="'+k+'">':'';$("photosStart").innerHTML=t("odoStart");$("photosEnd").innerHTML=t("odoEnd");}
 function renderMods(){
-  $("mods").innerHTML=S.mods.map((m,i)=>'<div class="row" style="grid-template-columns:1.4fr 1fr 1fr">'+
+  $("modsStart").innerHTML=S.mods.map((m,i)=>'<div class="row" style="grid-template-columns:1.5fr 1fr">'+
     '<label for="m'+i+'id">Moduł '+(i+1)+' – ID<input id="m'+i+'id" type="text" value="'+esc(m.id)+'" data-m="'+i+'" data-mf="id" placeholder="ID_" autocomplete="off"></label>'+
-    '<label for="m'+i+'s">TB start<input id="m'+i+'s" class="num" type="number" inputmode="decimal" step="0.1" value="'+esc(m.tbStart)+'" data-m="'+i+'" data-mf="tbStart"></label>'+
+    '<label for="m'+i+'s">TB start<input id="m'+i+'s" class="num" type="number" inputmode="decimal" step="0.1" value="'+esc(m.tbStart)+'" data-m="'+i+'" data-mf="tbStart"></label></div>').join("");
+  $("modsEnd").innerHTML=S.mods.map((m,i)=>'<div class="row" style="grid-template-columns:1.5fr 1fr">'+
+    '<span style="display:flex;flex-direction:column;gap:4px;font-size:.8rem;color:var(--muted)">Moduł '+(i+1)+'<span class="num" style="font-size:1rem;color:var(--fg);padding:10px 0">'+(esc(m.id)||'–')+(m.tbStart?' · start '+esc(m.tbStart)+' TB':'')+'</span></span>'+
     '<label for="m'+i+'e">TB koniec<input id="m'+i+'e" class="num" type="number" inputmode="decimal" step="0.1" value="'+esc(m.tbEnd)+'" data-m="'+i+'" data-mf="tbEnd"></label></div>').join("");
 }
 function totals(){
@@ -403,13 +432,18 @@ $("copy").addEventListener("click",()=>{const txt=summaryText(S);const out=$("ou
 function selectOut(){const r=document.createRange();r.selectNodeContents($("out"));const s=getSelection();s.removeAllRanges();s.addRange(r);}
 
 $("endShift").addEventListener("click",()=>{const a=active();const n=nowHM();if(a)a.end=n;S.shiftEnd=n;save();renderAll();
-  toast("Zmiana zamknięta. Wpisz licznik końcowy i TB koniec.");const el=$("odoEnd");el.scrollIntoView({block:"center"});});
+  go("end");toast("Zmiana zamknięta. Wpisz licznik końcowy i TB koniec.");});
+const TITLES={start:"Start zmiany",drive:"Jazda",end:"Koniec i raport"};
+function go(name){if(!TITLES[name])name="start";document.querySelectorAll(".screen").forEach(el=>el.hidden=el.dataset.screen!==name);
+  document.querySelectorAll(".tabs button").forEach(b=>b.classList.toggle("on",b.dataset.go===name));$("screenTitle").textContent=TITLES[name];
+  try{localStorage.setItem("rlog.screen",JSON.stringify(name));}catch(e){}window.scrollTo(0,0);}
+document.addEventListener("click",e=>{const b=e.target.closest("[data-go]");if(b)go(b.dataset.go);});
 $("newDay").addEventListener("click",()=>{$("confirmBox").hidden=false;});
 $("confirmNo").addEventListener("click",()=>{$("confirmBox").hidden=true;});
 $("confirmYes").addEventListener("click",()=>{const a=active();if(a)a.end=nowHM();
   if(S.segs.length||S.odoStart||S.shiftStart){const copy=JSON.parse(JSON.stringify(S));copy.photos={};H.unshift({savedAt:Date.now(),state:copy});H=H.slice(0,60);try{localStorage.setItem(HKEY,JSON.stringify(H));}catch(e){}}
   const keep={reg:S.reg,mods:S.mods.map(m=>({id:m.id,tbStart:m.tbEnd||m.tbStart,tbEnd:""}))};
-  S=blank();S.reg=keep.reg;S.mods=keep.mods;save();$("confirmBox").hidden=true;$("out").hidden=true;renderAll();toast("Nowy dzień");});
+  S=blank();S.reg=keep.reg;S.mods=keep.mods;save();$("confirmBox").hidden=true;$("out").hidden=true;renderAll();go("start");toast("Nowy dzień");});
 
 function renderHist(){
   if(!H.length){$("hist").innerHTML='<div class="empty">Zapisane dni pojawią się tutaj po „Nowy dzień".</div>';return;}
@@ -435,6 +469,7 @@ setInterval(()=>{if(active()){renderStatus();updateCalcs();renderSummary();
   const a=active();const btn=document.querySelector('.cond[data-cond="'+a.type+'"] small');if(btn)btn.textContent=hm(S.segs.filter(s=>s.type===a.type).reduce((x,s)=>x+segMin(s),0));}},20000);
 
 renderAll();
+go(load("rlog.screen",null)||"start");
 })();
 if("serviceWorker" in navigator){navigator.serviceWorker.register("sw.js").catch(()=>{});}
 </script>
