@@ -110,6 +110,13 @@ input[type=date],input[type=time]{-webkit-appearance:none;appearance:none;min-wi
 input::-webkit-date-and-time-value{text-align:left}
 .top{min-height:40px}
 h1{font-size:1.5rem}
+.hint{margin:0}
+.step.need select{border:2px solid var(--accent)}
+.step.done select{min-height:40px;font-size:.95rem;padding:6px 10px}
+.segbox{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px}
+.segbox summary{cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:8px;font-family:var(--f-display);font-size:1.1rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;list-style:none;min-height:32px}
+.segbox summary::-webkit-details-marker{display:none}
+.segbox summary .note{text-transform:none;letter-spacing:0;font-family:var(--f-body);font-weight:400}
 .extra{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
 .extra button{min-height:52px;font-family:var(--f-display);font-size:1.05rem;font-weight:600;letter-spacing:.03em}
 .extra .stop{color:var(--warn)}
@@ -164,7 +171,7 @@ pre.out{white-space:pre-wrap;font-family:var(--f-num);font-size:.82rem;backgroun
 <body>
 <div class="wrap">
   <div class="top">
-    <h1 id="screenTitle" data-v="12">Start zmiany</h1>
+    <h1 id="screenTitle" data-v="13">Start zmiany</h1>
     <button id="newDay" class="btn-sm" type="button">+ Nowy dzień</button>
     <button id="wake" class="btn-sm" type="button" hidden>Ekran: zwykły</button>
   </div>
@@ -215,10 +222,10 @@ pre.out{white-space:pre-wrap;font-family:var(--f-num);font-size:.82rem;backgroun
       <button type="button" class="btn-accent big" id="endShift">Koniec zmiany</button>
       <p class="note">Dotykaj warunków przy każdej zmianie drogi lub pory dnia. Przerwa techniczna to Technical issue, Twoja własna to Przerwa. Licznik wpisuj w odcinkach na postojach.</p>
     </section>
-    <section aria-label="Odcinki">
-      <div class="top"><h2>Odcinki</h2><span class="note" id="segCount"></span></div>
-      <div id="segs" style="display:flex;flex-direction:column;gap:8px"></div>
-    </section>
+    <details id="segBox" class="segbox">
+      <summary><span>Odcinki <span class="note" id="segCount"></span></span><span class="note">pokaż / edytuj</span></summary>
+      <div id="segs" style="display:flex;flex-direction:column;gap:8px;margin-top:10px"></div>
+    </details>
   </div>
 
   <!-- EKRAN 3: KONIEC / RAPORT -->
@@ -323,16 +330,21 @@ function renderIssues(){
   $("issuesEnd").innerHTML=I.length?I.map((x,k)=>'<div class="issue-row"><input type="time" value="'+esc(x.time)+'" data-iss="'+k+'" data-if="time" aria-label="Godzina"><input type="text" value="'+esc(x.text)+'" data-iss="'+k+'" data-if="text" aria-label="Opis"><button type="button" class="btn-sm" data-idel="'+k+'">Usuń</button></div>').join(""):'<span class="note">Brak issues. Dodajesz je w trakcie jazdy na ekranie Jazda albo tutaj.</span>';
 }
 function addIssue(id){const el=$(id);const t=el.value.trim();if(!t){el.focus();return;}S.issues.push({time:nowHM(),text:t});el.value="";save();renderIssues();toast("Issue dodane "+nowHM());}
-function curPeriod(){const a=active();if(a&&a.type.includes("-"))return a.type.split("-")[0];return S.period||"day";}
+function curPeriod(){const a=active();if(a&&a.type.includes("-"))return a.type.split("-")[0];return S.period||null;}
 function renderGrid(){
   const a=active(),P=curPeriod();
   let h='<div class="step"><span class="step-l">1 · Pora dnia</span><div class="tri">'+
     PERIODS.map(([p,pl])=>'<button type="button" class="per'+(p===P?' on':'')+'" data-period="'+p+'" style="--c:var(--'+p+')" aria-pressed="'+(p===P)+'">'+pl+'</button>').join("")+'</div></div>';
+  const driving=a&&a.type.includes("-");
+  if(!P){h+='<p class="note hint">Wybierz porę dnia, potem pogodę, potem drogę.</p>';}
+  else{
   const w=S.weather[P]||"";const opts=WEATHER.includes(w)?WEATHER:WEATHER.concat(w);
-  h+='<div class="step"><label for="wCur" class="step-l">2 · Pogoda ('+PERIODS.find(x=>x[0]===P)[1]+')</label><select id="wCur">'+opts.map(o=>'<option value="'+esc(o)+'"'+(o===w?' selected':'')+'>'+(o||"– wybierz –")+'</option>').join("")+'</select></div>';
+  h+='<div class="step'+(w?' done':' need')+'"><label for="wCur" class="step-l">2 · Pogoda ('+PERIODS.find(x=>x[0]===P)[1]+')</label><select id="wCur">'+opts.map(o=>'<option value="'+esc(o)+'"'+(o===w?' selected':'')+'>'+(o||"– wybierz –")+'</option>').join("")+'</select></div>';
+  if(w||driving){
   h+='<div class="step"><span class="step-l">3 · Droga</span><div class="tri">'+
     ROADS.map(([r,rl])=>{const t=P+"-"+r;const m=S.segs.filter(s=>s.type===t).reduce((x,s)=>x+segMin(s),0);
       return '<button type="button" class="cond'+(a&&a.type===t?' active':'')+'" data-cond="'+t+'" aria-pressed="'+(a&&a.type===t)+'">'+rl+'<small>'+hm(m)+'</small></button>';}).join("")+'</div></div>';
+  }}
   if(a){const ai=S.segs.length-1;let last="";for(let k=ai-1;k>=0;k--){if(num(S.segs[k].odo)!=null){last=S.segs[k].odo;break;}}if(!last&&S.odoStart)last=S.odoStart;
     h+='<div class="quick"><label for="qOdo">Licznik teraz [km] · '+esc(label(a.type))+'<span class="with-btn"><input id="qOdo" class="num" type="number" inputmode="numeric" value="'+esc(a.odo)+'" placeholder="'+(last?'ostatnio '+esc(last):'km')+'"><button type="button" class="btn-sm" data-photo="seg'+ai+'">Foto</button></span></label>'+
       (ai>0?'<span class="note" id="qPrev"></span>':'')+
@@ -345,8 +357,8 @@ function renderGrid(){
 function renderStatus(){const a=active();const tl=document.getElementById("tabLive");if(tl)tl.hidden=!a;$("dot").classList.toggle("on",!!a);$("nowLabel").textContent=a?label(a.type):"Brak aktywnego odcinka";$("nowDur").textContent=a?hm(segMin(a)):"0:00";}
 function renderSegs(){
   const box=$("segs");
-  if(!S.segs.length){box.innerHTML='<div class="empty">Jeszcze nic. Zacznij od dotknięcia warunków, w których jedziesz.</div>';$("segCount").textContent="";return;}
-  $("segCount").textContent=S.segs.length+" odc.";
+  if(!S.segs.length){box.innerHTML='<div class="empty">Jeszcze nic.</div>';$("segCount").textContent="(0)";return;}
+  $("segCount").textContent="("+S.segs.length+")";
   box.innerHTML=S.segs.map((s,i)=>{const p=s.type.includes("-")?s.type.split("-")[0]:s.type;const km=segKm(i);
     return '<div class="seg'+(!s.end?' live':'')+'" data-p="'+p+'" data-i="'+i+'">'+
       '<div class="seg-head"><select class="segtype" data-f="type" aria-label="Rodzaj odcinka">'+allTypes().map(t=>'<option value="'+t+'"'+(t===s.type?' selected':'')+'>'+label(t)+'</option>').join("")+'</select><span class="num" data-calc="'+i+'">'+hm(segMin(s))+' · '+(km==null?'— km':km+' km')+'</span></div>'+
@@ -491,7 +503,7 @@ document.addEventListener("input",e=>{
   else if(el.dataset.mf){S.mods[+el.dataset.m][el.dataset.mf]=el.value;}
   else if(el.dataset.iss!=null){S.issues[+el.dataset.iss][el.dataset.if]=el.value;}
   else if(el.id==="qOdo"){const a=active();if(a)a.odo=el.value;updateCalcs();qPrev();}
-  else if(el.id==="wCur"){S.weather[curPeriod()]=el.value;}
+  else if(el.id==="wCur"){S.weather[curPeriod()]=el.value;save();renderGrid();renderSummary();return;}
   else return;
   if(document.querySelector(".missing"))markMissing();
   save();renderSummary();if(el.id==="odoStart"||el.id==="odoEnd")updateCalcs();
