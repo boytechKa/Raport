@@ -117,6 +117,13 @@ h1{font-size:1.5rem}
 .segbox summary{cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:8px;font-family:var(--f-display);font-size:1.1rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;list-style:none;min-height:32px}
 .segbox summary::-webkit-details-marker{display:none}
 .segbox summary .note{text-transform:none;letter-spacing:0;font-family:var(--f-body);font-weight:400}
+.sf-more summary{cursor:pointer;color:var(--muted);font-size:.85rem;padding:2px 0}
+.sf-more-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:8px}
+.undobar{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(80px + env(safe-area-inset-bottom,0px));z-index:18;background:var(--fg);color:var(--bg);border-radius:10px;padding:8px 8px 8px 14px;display:flex;gap:12px;align-items:center;font-size:.95rem;max-width:calc(100% - 32px)}
+.undobar button{background:var(--accent);color:var(--accent-fg);border-color:var(--accent);font-weight:600;min-height:40px;padding:6px 16px}
+.sunmsg{border:2px solid var(--dusk);background:var(--panel);border-radius:10px;padding:10px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between}
+.sunline{font-family:var(--f-num);font-size:.72rem;letter-spacing:0;text-transform:none;font-weight:400;margin-left:6px}
+.xl{display:flex;flex-direction:column;gap:6px;border-top:1px solid var(--line);padding-top:10px}
 .extra{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
 .extra button{min-height:52px;font-family:var(--f-display);font-size:1.05rem;font-weight:600;letter-spacing:.03em}
 .extra .stop{color:var(--warn)}
@@ -164,14 +171,14 @@ pre.out{white-space:pre-wrap;font-family:var(--f-num);font-size:.82rem;backgroun
 .tabs button.on{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
 .tabs .dot{margin:0}
 .extra button{padding:6px 4px;font-size:clamp(.85rem,3.6vw,1.05rem);hyphens:auto;overflow-wrap:anywhere}
-.toast{bottom:calc(84px + env(safe-area-inset-bottom,0px))}
+.toast{bottom:calc(140px + env(safe-area-inset-bottom,0px))}
 </style>
 
 </head>
 <body>
 <div class="wrap">
   <div class="top">
-    <h1 id="screenTitle" data-v="13">Start zmiany</h1>
+    <h1 id="screenTitle" data-v="14">Start zmiany</h1>
     <button id="newDay" class="btn-sm" type="button">+ Nowy dzień</button>
     <button id="wake" class="btn-sm" type="button" hidden>Ekran: zwykły</button>
   </div>
@@ -193,6 +200,16 @@ pre.out{white-space:pre-wrap;font-family:var(--f-num);font-size:.82rem;backgroun
       <div class="sf-sep">Nośniki danych <span class="note">TB start, gdy system wstanie</span></div>
       <div id="modsStart" class="sf-mods"></div>
       <div class="seg-tools sf-full" id="photosStart"></div>
+      <details class="sf-full sf-more">
+        <summary>Więcej (opcjonalnie): kraj, miasto, kierowca, technik</summary>
+        <div class="sf-more-grid">
+          <label for="country">Country<input id="country" type="text" list="dlCountry" autocomplete="off"></label>
+          <label for="city">City<input id="city" type="text" list="dlCity" autocomplete="off"></label>
+          <label for="driver">Driver<input id="driver" type="text" list="dlDriver" autocomplete="off"></label>
+          <label for="tech">Technician<input id="tech" type="text" list="dlTech" autocomplete="off"></label>
+        </div>
+        <datalist id="dlCountry"></datalist><datalist id="dlCity"></datalist><datalist id="dlDriver"></datalist><datalist id="dlTech"></datalist>
+      </details>
     </section>
     <button type="button" class="btn-accent big" data-go="drive">Dalej: jazda</button>
   </div>
@@ -206,6 +223,7 @@ pre.out{white-space:pre-wrap;font-family:var(--f-num);font-size:.82rem;backgroun
       </div>
       <div class="grid" id="grid"></div>
       <div id="blockMsg" class="block" hidden></div>
+      <div id="sunMsg" class="sunmsg" hidden></div>
       <div class="extra">
         <button type="button" data-cond="prep">Przygotowanie</button>
         <button type="button" data-cond="tech">Technical issue</button>
@@ -261,6 +279,12 @@ pre.out{white-space:pre-wrap;font-family:var(--f-num);font-size:.82rem;backgroun
         <div class="kv" id="workKv"></div>
         <div class="with-btn" style="flex-wrap:wrap">
           <button type="button" class="btn-accent" id="copy">Kopiuj podsumowanie</button>
+          <button type="button" id="share">Udostępnij</button>
+        </div>
+        <div class="xl">
+          <h2>Do Excela</h2>
+          <div class="with-btn"><button type="button" class="btn-accent" data-xl="1">Kopiuj: Shift 1</button><button type="button" data-xl="2">Kopiuj: Shift 2</button></div>
+          <p class="note" id="xlWhere"></p>
         </div>
         <pre class="out" id="out" hidden></pre>
       </div>
@@ -268,7 +292,9 @@ pre.out{white-space:pre-wrap;font-family:var(--f-num);font-size:.82rem;backgroun
     <section aria-label="Historia">
       <h2>Historia dni</h2>
       <div class="panel" id="hist"></div>
-      <p class="note">Wszystko zapisuje się tylko w tym telefonie. Na koniec dnia skopiuj podsumowanie, bo wyczyszczenie danych przeglądarki usuwa zapis.</p>
+      <div class="with-btn" style="flex-wrap:wrap"><button type="button" id="backup">Zapisz kopię (plik)</button><button type="button" id="restoreBtn">Wczytaj kopię</button></div>
+      <input type="file" id="restoreInput" accept="application/json,.json" hidden>
+      <p class="note">Wszystko zapisuje się tylko w tym telefonie. Raz na kilka dni zapisz kopię i wyślij ją sobie mailem: wyczyszczenie danych przeglądarki albo usunięcie ikonki kasuje zapis.</p>
     </section>
   </div>
 </div>
@@ -282,12 +308,14 @@ pre.out{white-space:pre-wrap;font-family:var(--f-num);font-size:.82rem;backgroun
 <input type="file" id="photoInput" accept="image/*" capture="environment" hidden>
 <div id="viewer" class="viewer" hidden><img id="viewerImg" alt="Zdjęcie licznika"></div>
 <div id="toast" class="toast" hidden></div>
+<div id="undoBar" class="undobar" hidden></div>
 
 <script>
 (function(){
 const PERIODS=[["day","Day"],["dusk","Dusk"],["night","Night"]];
 const ROADS=[["city","City"],["rural","Rural"],["highway","Highway"]];
 const WEATHER=["","Clear","Cloudy","Rain","Snow","Fog","Clear/Rain","Clear/Fog","Clear/Snow","Clear/Drizzel","Cloudy/Rain","Fog/clear"];
+const FIELDS=["date","reg","shiftStart","shiftEnd","odoStart","odoEnd","comment","country","city","driver","tech"];
 const KEY="rlog.current", HKEY="rlog.history";
 const $=id=>document.getElementById(id);
 
@@ -317,7 +345,15 @@ function segKm(i){const s=S.segs[i];if(s.km!==""&&s.km!=null&&num(s.km)!=null)re
 function esc(s){return String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
 
 /* ---------- render ---------- */
-function qPrev(){const el=document.getElementById("qPrev");if(!el)return;const i=S.segs.length-2;const k=segKm(i);el.textContent="Poprzedni odcinek ("+label(S.segs[i].type)+"): "+(k==null?"brak licznika":k+" km");}
+function odoWarnings(st){st=st||S;const w=[];const pts=[];
+  if(num(st.odoStart)!=null)pts.push([num(st.odoStart),"licznik start"]);
+  st.segs.forEach((g,i)=>{if(num(g.odo)!=null)pts.push([num(g.odo),"odcinek "+(i+1)+" ("+label(g.type)+")"]);});
+  if(num(st.odoEnd)!=null)pts.push([num(st.odoEnd),"licznik koniec"]);
+  for(let i=1;i<pts.length;i++)if(pts[i][0]<pts[i-1][0])w.push("Licznik spada: "+pts[i][1]+" ("+pts[i][0]+") mniej niż "+pts[i-1][1]+" ("+pts[i-1][0]+")");
+  if(st===S)S.segs.forEach((g,i)=>{const k=segKm(i),m=segMin(g);if(k!=null&&m>=3&&k/(m/60)>160)w.push("Odcinek "+(i+1)+": "+k+" km w "+hm(m)+" to ponad 160 km/h. Literówka w liczniku?");});
+  if(num(st.odoStart)!=null&&num(st.odoEnd)!=null&&num(st.odoEnd)-num(st.odoStart)>1500)w.push("Ponad 1500 km na zmianę. Sprawdź licznik start i koniec.");
+  return w;}
+function qPrev(){const qw=document.getElementById("qWarn");if(qw){const w=odoWarnings();qw.innerHTML=w.map(esc).join("<br>");qw.hidden=!w.length;}const el=document.getElementById("qPrev");if(!el)return;const i=S.segs.length-2;const k=segKm(i);el.textContent="Poprzedni odcinek ("+label(S.segs[i].type)+"): "+(k==null?"brak licznika":k+" km");}
 function ensureStartSeg(){
   if(!S.shiftStart)return;
   if(!S.segs.length){S.segs.push({type:"prep",start:S.shiftStart,end:"",odo:"",km:""});}
@@ -330,10 +366,35 @@ function renderIssues(){
   $("issuesEnd").innerHTML=I.length?I.map((x,k)=>'<div class="issue-row"><input type="time" value="'+esc(x.time)+'" data-iss="'+k+'" data-if="time" aria-label="Godzina"><input type="text" value="'+esc(x.text)+'" data-iss="'+k+'" data-if="text" aria-label="Opis"><button type="button" class="btn-sm" data-idel="'+k+'">Usuń</button></div>').join(""):'<span class="note">Brak issues. Dodajesz je w trakcie jazdy na ekranie Jazda albo tutaj.</span>';
 }
 function addIssue(id){const el=$(id);const t=el.value.trim();if(!t){el.focus();return;}S.issues.push({time:nowHM(),text:t});el.value="";save();renderIssues();toast("Issue dodane "+nowHM());}
+const SC=(()=>{const rad=Math.PI/180,dayMs=864e5,J1970=2440588,J2000=2451545,e=rad*23.4397,J0=0.0009;
+  const toDays=d=>d.valueOf()/dayMs-0.5+J1970-J2000,fromJ=j=>new Date((j+0.5-J1970)*dayMs);
+  const M=d=>rad*(357.5291+0.98560028*d);const L=m=>m+rad*(1.9148*Math.sin(m)+0.02*Math.sin(2*m)+0.0003*Math.sin(3*m))+rad*102.9372+Math.PI;
+  const dec=l=>Math.asin(Math.sin(e)*Math.sin(l));
+  return function(date,lat,lng){const lw=rad*-lng,phi=rad*lat,d=toDays(date),n=Math.round(d-J0-lw/(2*Math.PI));
+    const ds=J0+lw/(2*Math.PI)+n,m=M(ds),l=L(m),dc=dec(l),Jnoon=J2000+ds+0.0053*Math.sin(m)-0.0069*Math.sin(2*l);
+    const set=h=>{const w=Math.acos((Math.sin(h*rad)-Math.sin(phi)*Math.sin(dc))/(Math.cos(phi)*Math.cos(dc)));const a=J0+(w+lw)/(2*Math.PI)+n;return J2000+a+0.0053*Math.sin(m)-0.0069*Math.sin(2*l);};
+    const s1=set(-0.833),s2=set(-6);return{sunrise:fromJ(Jnoon-(s1-Jnoon)),sunset:fromJ(s1),dawn:fromJ(Jnoon-(s2-Jnoon)),dusk:fromJ(s2)};};})();
+let LOC=load("rlog.loc",null);
+function askLoc(){if(LOC&&Date.now()-LOC.t<6*3600e3)return;if(!navigator.geolocation)return;
+  navigator.geolocation.getCurrentPosition(p=>{LOC={lat:p.coords.latitude,lng:p.coords.longitude,t:Date.now()};try{localStorage.setItem("rlog.loc",JSON.stringify(LOC));}catch(e){}renderGrid();checkSun();},()=>{},{maximumAge:3600e3,timeout:15000});}
+function sunToday(){const l=LOC||{lat:50.06,lng:19.94};return SC(new Date(),l.lat,l.lng);}
+function tHM(d){return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");}
+let sunSnooze=0;
+function checkSun(){const box=$("sunMsg");const a=active();if(!a||!a.type.includes("-")||Date.now()<sunSnooze){box.hidden=true;return;}
+  const P=a.type.split("-")[0],t=sunToday(),now=new Date();let sug=null,why="";
+  if(P==="day"&&now>=t.sunset&&now<t.dusk){sug="dusk";why="Zachód słońca był o "+tHM(t.sunset)+".";}
+  else if((P==="day"||P==="dusk")&&now>=t.dusk){sug="night";why="Zmierzch skończył się o "+tHM(t.dusk)+".";}
+  else if(P==="night"&&now>=t.dawn&&now<t.sunrise){sug="dusk";why="Świt zaczął się o "+tHM(t.dawn)+".";}
+  else if(P==="dusk"&&now>=t.sunrise&&now<t.sunset){sug="day";why="Wschód słońca był o "+tHM(t.sunrise)+".";}
+  if(!sug){box.hidden=true;return;}
+  const nm=PERIODS.find(x=>x[0]===sug)[1];
+  box.innerHTML='<span>'+why+' Przełączyć na <b>'+nm+'</b>?</span><span class="with-btn"><button type="button" class="btn-accent btn-sm" data-period="'+sug+'">Tak, '+nm+'</button><button type="button" class="btn-sm" id="sunNo">Nie teraz</button></span>';box.hidden=false;
+  $("sunNo").onclick=()=>{sunSnooze=Date.now()+10*60e3;box.hidden=true;};}
 function curPeriod(){const a=active();if(a&&a.type.includes("-"))return a.type.split("-")[0];return S.period||null;}
 function renderGrid(){
   const a=active(),P=curPeriod();
-  let h='<div class="step"><span class="step-l">1 · Pora dnia</span><div class="tri">'+
+  const st=sunToday();
+  let h='<div class="step"><span class="step-l">1 · Pora dnia <span class="sunline">wschód '+tHM(st.sunrise)+' · zachód '+tHM(st.sunset)+' · zmrok '+tHM(st.dusk)+'</span></span><div class="tri">'+
     PERIODS.map(([p,pl])=>'<button type="button" class="per'+(p===P?' on':'')+'" data-period="'+p+'" style="--c:var(--'+p+')" aria-pressed="'+(p===P)+'">'+pl+'</button>').join("")+'</div></div>';
   const driving=a&&a.type.includes("-");
   if(!P){h+='<p class="note hint">Wybierz porę dnia, potem pogodę, potem drogę.</p>';}
@@ -347,11 +408,11 @@ function renderGrid(){
   }}
   if(a){const ai=S.segs.length-1;let last="";for(let k=ai-1;k>=0;k--){if(num(S.segs[k].odo)!=null){last=S.segs[k].odo;break;}}if(!last&&S.odoStart)last=S.odoStart;
     h+='<div class="quick"><label for="qOdo">Licznik teraz [km] · '+esc(label(a.type))+'<span class="with-btn"><input id="qOdo" class="num" type="number" inputmode="numeric" value="'+esc(a.odo)+'" placeholder="'+(last?'ostatnio '+esc(last):'km')+'"><button type="button" class="btn-sm" data-photo="seg'+ai+'">Foto</button></span></label>'+
-      (ai>0?'<span class="note" id="qPrev"></span>':'')+
+      (ai>0?'<span class="note" id="qPrev"></span>':'')+'<span class="warnline" id="qWarn" hidden></span>'+
       (a.type==="prep"?(segMin(a)>=30?'<span class="warnline">Stoicie już '+hm(segMin(a))+'. Jeśli to przez system albo auto, zamień na Technical issue.</span>':'')+
         '<div class="tri" style="grid-template-columns:1fr 1fr"><button type="button" class="btn-sm" data-conv="split">Od teraz Technical issue</button><button type="button" class="btn-sm" data-conv="all">Całość jako Technical issue</button></div>':'')+
       '</div>';}
-  $("grid").innerHTML=h;qPrev();
+  $("grid").innerHTML=h;qPrev();checkSun();
   document.querySelectorAll(".extra button").forEach(b=>b.classList.toggle("active",!!(a&&a.type===b.dataset.cond)));
 }
 function renderStatus(){const a=active();const tl=document.getElementById("tabLive");if(tl)tl.hidden=!a;$("dot").classList.toggle("on",!!a);$("nowLabel").textContent=a?label(a.type):"Brak aktywnego odcinka";$("nowDur").textContent=a?hm(segMin(a)):"0:00";}
@@ -399,7 +460,9 @@ function workRows(T){
   const rows=[["Drive preparation",T.prep],["Drive",T.drive],["Breaks",T.brk],["Copying",T.copy],["Other",T.other+T.untracked],["Technical issue",T.tech]];
   return rows.map(r=>({name:r[0],exact:r[1]})).concat([{name:"Sum",exact:T.shift}]);
 }
+function renderXlWhere(){const a=xlTarget(S,1),b=xlTarget(S,2);$("xlWhere").innerHTML="Arkusz <b>"+a.cw+"</b>. Shift 1: wklej w <b>"+a.col+"6</b>, Shift 2: w <b>"+b.col+"77</b>. Formuły arkusza wstawią się same.";}
 function renderSummary(){
+  renderXlWhere();
   const T=totals();
   let h='<thead><tr><th></th><th>km</th><th>h:mm</th></tr></thead><tbody>';
   for(const [p,pl] of PERIODS){const w=S.weather[p];let pk=0,pm=0;
@@ -415,6 +478,7 @@ function renderSummary(){
     '<span>Technical issues</span><span>'+hm(T.tech)+'</span>'+
     '<span>Time of logging (zmiana − przerwy − tech)</span><span>'+hm(T.logging)+'</span>'+
     (T.odoTotal!=null&&Math.abs(T.odoTotal-T.km)>0.5?'<span>Km poza logowaniem (tech, dojazdy)</span><span>'+(Math.round((T.odoTotal-T.km)*10)/10)+'</span>':'')+
+    odoWarnings().map(x=>'<span class="warnline" style="grid-column:1/-1">'+esc(x)+'</span>').join("")+
     (miss?'<span class="note" style="grid-column:1/-1">* brakuje licznika w części odcinków, te km nie są jeszcze policzone</span>':'');
   const W=workRows(T);
   $("workKv").innerHTML='<span class="note">Do drugiego systemu</span><span class="note">h:mm</span>'+
@@ -422,13 +486,43 @@ function renderSummary(){
     (T.untracked>4?'<span class="note" style="grid-column:1/-1">'+hm(T.untracked)+' bez żadnego statusu doliczone do Other. Jeśli to była przerwa, popraw w odcinkach.</span>':'');
 }
 function updateCalcs(){S.segs.forEach((s,i)=>{const el=document.querySelector('[data-calc="'+i+'"]');if(el){const k=segKm(i);el.textContent=hm(segMin(s))+' · '+(k==null?'— km':k+' km');}});}
+function renderLists(){const m={dlCountry:"country",dlCity:"city",dlDriver:"driver",dlTech:"tech"};
+  for(const id in m){const f=m[id];const vals=[...new Set(H.map(h=>h.state[f]).concat(S[f]).filter(Boolean))];$(id).innerHTML=vals.map(v=>'<option value="'+esc(v)+'">').join("");}}
 function renderAll(){
+  renderLists();
   renderIssues();
-  for(const id of ["date","reg","shiftStart","shiftEnd","odoStart","odoEnd","comment"])$(id).value=S[id]||"";
+  for(const id of FIELDS)$(id).value=S[id]||"";
   renderGrid();renderStatus();renderSegs();renderShiftPhotos();renderMods();renderSummary();renderHist();
 }
 
 /* ---------- text export ---------- */
+function isoWeek(ds){const d=new Date(ds+"T12:00:00");const t=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));const day=t.getUTCDay()||7;t.setUTCDate(t.getUTCDate()+4-day);const y=new Date(Date.UTC(t.getUTCFullYear(),0,1));return Math.ceil(((t-y)/864e5+1)/7);}
+function xlTarget(st,shift){const d=new Date(st.date+"T12:00:00");const col="HBCDEFG"[d.getDay()];return{col,row:shift===2?77:6,cw:"CW"+isoWeek(st.date)};}
+function xlClean(x){let t=String(x??"").replace(/[\t\r\n]+/g," ").replace(/"/g,"'").trim();if(/^[=+@]/.test(t))t=t.slice(1).trim();if(/^-/.test(t))t="–"+t.slice(1);return t;}
+function addDay(ds,n){const d=new Date(ds+"T12:00:00");d.setDate(d.getDate()+n);return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
+function excelText(st,shift){
+  const prev=S;S=st;const T=totals();S=prev;
+  const {col:c,row:r0}=xlTarget(st,shift);const o=r0-6;const R=n=>c+(n+o);
+  const kmv=v=>{v=Math.round(v||0);return v?String(v):"";};const tm=m=>m?hm(m):"";
+  const tb=v=>num(v)!=null?String(num(v)).replace(".",",")+" TB":"";
+  const endDate=st.shiftEnd&&st.shiftStart&&mins(st.shiftEnd)<mins(st.shiftStart)?addDay(st.date,1):st.date;
+  const iss=(st.issues||[]).filter(x=>x.text).map((x,k)=>(k+1)+". "+x.time+" "+x.text);if(st.comment)iss.push(st.comment);
+  const L={};
+  L[6]=st.country;L[7]=st.city;L[8]=st.driver;L[9]=st.tech;L[10]="";L[11]="";
+  L[12]=st.shiftStart?st.date+" "+st.shiftStart:"";L[13]=st.shiftEnd?endDate+" "+st.shiftEnd:"";
+  L[14]=st.odoStart;L[15]=st.odoEnd;L[16]="="+R(15)+"-"+R(14);L[17]=tm(T.brk);L[18]=tm(T.tech);L[19]=iss.join("; ");
+  const blocks=[["day",20],["dusk",25],["night",30]];
+  for(const [p,b] of blocks){L[b]=st.weather[p]||"";L[b+1]=kmv(T.t[p].city.km);L[b+2]=kmv(T.t[p].rural.km);L[b+3]=kmv(T.t[p].highway.km);L[b+4]="="+R(b+1)+"+"+R(b+2)+"+"+R(b+3);}
+  L[35]="="+R(24)+"+"+R(29)+"+"+R(34);L[36]="="+R(13)+"-"+R(12)+"-"+R(18)+"-"+R(17);L[37]="";L[38]="";
+  L[39]="="+R(13)+"-"+R(12)+"+"+R(37);L[40]="="+R(13)+"-"+R(12)+"+"+R(38);
+  L[41]=st.mods[0].id;L[42]=tb(st.mods[0].tbEnd);for(let i=43;i<=50;i++)L[i]="";
+  L[51]=st.mods[1].id;L[52]=tb(st.mods[1].tbEnd);for(let i=53;i<=62;i++)L[i]="";
+  const tb2=[["day",63],["dusk",67],["night",71]];
+  for(const [p,b] of tb2){L[b]=tm(T.t[p].city.min);L[b+1]=tm(T.t[p].rural.min);L[b+2]=tm(T.t[p].highway.min);L[b+3]="="+R(b)+"+"+R(b+1)+"+"+R(b+2);}
+  L[75]="="+R(66)+"+"+R(70)+"+"+R(74);
+  const out=[];for(let i=6;i<=75;i++){const v=L[i]??"";out.push(String(v).startsWith("=")?v:xlClean(v));}
+  return out.join("\n");
+}
 function summaryText(st){
   const prev=S;S=st;const T=totals();S=prev;
   const L=[];
@@ -465,15 +559,21 @@ function tap(cond){
     if(m.length){box.innerHTML='<b>Nie uzupełniono startu:</b> '+m.map(x=>x[1]).join(", ")+'.<button type="button" class="btn-accent btn-sm" id="fixStart">Uzupełnij</button>';box.hidden=false;
       $("fixStart").onclick=()=>{box.hidden=true;go("start");markMissing();const el=document.getElementById(m[0][0]);if(el)el.focus();};return;}
     box.hidden=true;}
-  const now=nowHM(),a=active();if(cond.includes("-"))S.period=cond.split("-")[0];
+  const now=nowHM(),a=active();
+  undoSnap={segs:JSON.stringify(S.segs),shiftStart:S.shiftStart,period:S.period,photos:JSON.stringify(S.photos)};
+  if(cond.includes("-"))S.period=cond.split("-")[0];
   if(a){a.end=now;}
   if(cond!=="stop"&&!(a&&a.type===cond)){
     if(!S.shiftStart)S.shiftStart=now;
     S.segs.push({type:cond,start:now,end:"",odo:"",km:""});
   }
-  save();renderAll();
+  save();renderAll();showUndo(cond==="stop"?"Stop":label(cond));
   if(cond!=="stop"){const q=document.getElementById("qOdo");if(q){q.focus({preventScroll:true});q.scrollIntoView({block:"center",behavior:"smooth"});}}
 }
+let undoSnap=null,undoTimer=null;
+function showUndo(what){const b=$("undoBar");b.innerHTML='<span>'+esc(what)+'</span><button type="button" class="btn-sm" id="undoBtn">Cofnij</button>';b.hidden=false;
+  $("undoBtn").onclick=()=>{if(!undoSnap)return;S.segs=JSON.parse(undoSnap.segs);S.shiftStart=undoSnap.shiftStart;S.period=undoSnap.period;S.photos=JSON.parse(undoSnap.photos);undoSnap=null;save();renderAll();b.hidden=true;toast("Cofnięte");};
+  clearTimeout(undoTimer);undoTimer=setTimeout(()=>{b.hidden=true;undoSnap=null;},30000);}
 let photoTarget=null;
 function compress(file){return new Promise((res,rej)=>{const img=new Image();const url=URL.createObjectURL(file);img.onload=()=>{const max=900;const sc=Math.min(1,max/Math.max(img.width,img.height));const c=document.createElement("canvas");c.width=Math.round(img.width*sc);c.height=Math.round(img.height*sc);c.getContext("2d").drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(url);res(c.toDataURL("image/jpeg",0.6));};img.onerror=rej;img.src=url;});}
 $("photoInput").addEventListener("change",async e=>{const f=e.target.files[0];e.target.value="";if(!f||!photoTarget)return;try{S.photos[photoTarget]=await compress(f);save();renderAll();toast("Zdjęcie zapisane");}catch(err){toast("Nie udało się wczytać zdjęcia");}});
@@ -498,11 +598,12 @@ $("viewer").addEventListener("click",()=>{$("viewer").hidden=true;});
 
 document.addEventListener("input",e=>{
   const el=e.target;
-  if(["date","reg","shiftStart","shiftEnd","odoStart","odoEnd","comment"].includes(el.id)){S[el.id]=el.value;if(el.id==="shiftStart"){const had=S.segs.length;ensureStartSeg();if(S.segs.length!==had||S.segs.length===1){save();renderGrid();renderStatus();renderSegs();}}}
+  if(FIELDS.includes(el.id)){S[el.id]=el.value;if(el.id==="shiftStart"){const had=S.segs.length;ensureStartSeg();if(S.segs.length!==had||S.segs.length===1){save();renderGrid();renderStatus();renderSegs();}}}
   else if(el.dataset.f){const i=+el.closest(".seg").dataset.i;S.segs[i][el.dataset.f]=el.value;if(el.dataset.f==="type"){save();renderAll();return;}updateCalcs();}
   else if(el.dataset.mf){S.mods[+el.dataset.m][el.dataset.mf]=el.value;}
   else if(el.dataset.iss!=null){S.issues[+el.dataset.iss][el.dataset.if]=el.value;}
   else if(el.id==="qOdo"){const a=active();if(a)a.odo=el.value;updateCalcs();qPrev();}
+
   else if(el.id==="wCur"){S.weather[curPeriod()]=el.value;save();renderGrid();renderSummary();return;}
   else return;
   if(document.querySelector(".missing"))markMissing();
@@ -513,6 +614,25 @@ document.addEventListener("input",e=>{
 $("copy").addEventListener("click",()=>{const txt=summaryText(S);const out=$("out");out.textContent=txt;out.hidden=false;
   navigator.clipboard&&navigator.clipboard.writeText(txt).then(()=>toast("Skopiowano"),()=>{selectOut();toast("Zaznaczone, skopiuj ręcznie");});
   if(!navigator.clipboard){selectOut();toast("Zaznaczone, skopiuj ręcznie");}});
+function copyText(txt,okMsg){const out=$("out");out.textContent=txt;
+  const fb=()=>{out.hidden=false;selectOut();toast("Zaznaczone, skopiuj ręcznie");};
+  if(navigator.clipboard)navigator.clipboard.writeText(txt).then(()=>toast(okMsg),fb);else fb();}
+document.addEventListener("click",e=>{const b=e.target.closest("[data-xl]");if(!b)return;const sh=+b.dataset.xl;const t=xlTarget(S,sh);
+  copyText(excelText(S,sh),"Skopiowano. Wklej w "+t.col+t.row);$("out").hidden=true;
+  $("xlWhere").innerHTML="Arkusz <b>"+t.cw+"</b>, kliknij komórkę <b>"+t.col+t.row+"</b> i wklej. Rejestrację wpisz w wierszu 4.";});
+$("backup").addEventListener("click",async()=>{const data=JSON.stringify({app:"raport",v:1,saved:new Date().toISOString(),current:S,history:H});
+  const name="raport-kopia-"+today()+".json";const file=new File([data],name,{type:"application/json"});
+  try{if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],title:name});return;}}catch(e){if(e&&e.name==="AbortError")return;}
+  const a=document.createElement("a");a.href=URL.createObjectURL(file);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1000);toast("Kopia zapisana");});
+$("restoreBtn").addEventListener("click",()=>$("restoreInput").click());
+$("restoreInput").addEventListener("change",async e=>{const f=e.target.files[0];e.target.value="";if(!f)return;
+  try{const d=JSON.parse(await f.text());if(d.app!=="raport")throw 0;const seen=new Set(H.map(h=>h.savedAt));let n=0;
+    (d.history||[]).forEach(h=>{if(!seen.has(h.savedAt)){H.push(h);n++;}});H.sort((a,b)=>b.savedAt-a.savedAt);
+    try{localStorage.setItem(HKEY,JSON.stringify(H));}catch(_){}
+    if(!S.segs.length&&d.current&&d.current.segs&&d.current.segs.length){S=Object.assign(blank(),d.current);save();}
+    renderAll();toast("Wczytano: "+n+" dni do historii");}catch(err){toast("To nie jest plik kopii z tej aplikacji");}});
+$("share").addEventListener("click",()=>{const txt=summaryText(S);
+  if(navigator.share)navigator.share({title:"Raport "+S.date,text:txt}).catch(()=>{});else copyText(txt,"Skopiowano (brak udostępniania)");});
 function selectOut(){const r=document.createRange();r.selectNodeContents($("out"));const s=getSelection();s.removeAllRanges();s.addRange(r);}
 
 $("issueAdd").addEventListener("click",()=>addIssue("issueNew"));
@@ -525,7 +645,7 @@ $("endShift").addEventListener("click",()=>{const a=active();const n=nowHM();if(
 const TITLES={start:"Start zmiany",drive:"Jazda",end:"Koniec i raport"};
 function go(name){if(!TITLES[name])name="start";document.querySelectorAll(".screen").forEach(el=>el.hidden=el.dataset.screen!==name);
   document.querySelectorAll(".tabs button").forEach(b=>b.classList.toggle("on",b.dataset.go===name));$("screenTitle").textContent=TITLES[name];$("newDay").hidden=name!=="start";$("wake").hidden=name==="start";
-  try{localStorage.setItem("rlog.screen",JSON.stringify(name));}catch(e){}window.scrollTo(0,0);}
+  try{localStorage.setItem("rlog.screen",JSON.stringify(name));}catch(e){}if(name==="drive")askLoc();window.scrollTo(0,0);}
 document.addEventListener("click",e=>{const b=e.target.closest("[data-go]");if(b)go(b.dataset.go);});
 $("newDay").addEventListener("click",()=>{$("confirmBox").hidden=false;});
 $("confirmNo").addEventListener("click",()=>{$("confirmBox").hidden=true;});
@@ -553,7 +673,7 @@ $("wake").addEventListener("click",async()=>{try{if(lock){await lock.release();l
 
 let tt;function toast(m){const t=$("toast");t.textContent=m;t.hidden=false;clearTimeout(tt);tt=setTimeout(()=>t.hidden=true,1800);}
 
-setInterval(()=>{if(active()){renderStatus();updateCalcs();renderSummary();
+setInterval(()=>{checkSun();if(active()){renderStatus();updateCalcs();renderSummary();
   if(active().type==="prep"&&document.activeElement&&document.activeElement.id!=="qOdo")renderGrid();
   const a=active();const btn=document.querySelector('.cond[data-cond="'+a.type+'"] small');if(btn)btn.textContent=hm(S.segs.filter(s=>s.type===a.type).reduce((x,s)=>x+segMin(s),0));}},20000);
 
